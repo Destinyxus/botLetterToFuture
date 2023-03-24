@@ -44,7 +44,7 @@ func (s *Store) CreateAccountTable() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("creeated")
+	fmt.Println("gleb")
 	return err
 }
 
