@@ -27,7 +27,7 @@ func (s *Store) Open() error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	fmt.Println("opened")
+	fmt.Println("openned")
 	s.db = db
 	return nil
 }
