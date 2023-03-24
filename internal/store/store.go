@@ -27,7 +27,7 @@ func (s *Store) Open() error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	fmt.Println("opened")
+	fmt.Println("openned")
 	s.db = db
 	return nil
 }
@@ -42,7 +42,7 @@ func (s *Store) CreateAccountTable() error {
 
 	_, err := s.db.Exec(query)
 	if err != nil {
-		fmt.Errorf("faiiled")
+		return err
 	}
 	fmt.Println("created")
 	return err
