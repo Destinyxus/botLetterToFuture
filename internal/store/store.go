@@ -42,7 +42,7 @@ func (s *Store) CreateAccountTable() error {
 
 	_, err := s.db.Exec(query)
 	if err != nil {
-		fmt.Errorf("failed")
+		fmt.Errorf("faiiled")
 	}
 	fmt.Println("created")
 	return err
