@@ -3,24 +3,27 @@ package apiserver
 import (
 	"log"
 
+	"LetterToFuture/internal/email"
 	"LetterToFuture/internal/store"
 )
 
 type APIServer struct {
 	Logger *log.Logger
 	Store  *store.Store
+	Email  *email.Email
 }
 
 func NewAPIServer() *APIServer {
-	return &APIServer{
+	s := &APIServer{
 		Logger: &log.Logger{},
 		Store:  store.NewStore(),
 	}
+	s.Email = email.NewEmail(s.Store)
+	return s
 }
 
 func (s *APIServer) Start() error {
 	s.configureStore()
-
 	return nil
 }
 

@@ -47,6 +47,18 @@ func (s *Store) CreateAccountTable() error {
 	fmt.Println("creeated")
 	return err
 }
+func (s *Store) GetEmail(id int) (*model.Model, error) {
+	row, err := s.db.Query("SELECT email FROM letters WHERE id = $1", id)
+	if err != nil {
+		return nil, err
+	}
+	model1 := &model.Model{}
+	for row.Next() {
+		err = row.Scan(&model1.Email)
+	}
+
+	return model1, nil
+}
 
 func (s *Store) CreateALetter(m *model.Model) error {
 	query := fmt.Sprintf("insert into letters (email,text_date,letter) values ('%s','%s','%s')", m.Email, m.Date, m.Letter)

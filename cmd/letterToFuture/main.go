@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -11,9 +11,20 @@ import (
 	"LetterToFuture/internal/apiserver"
 	"LetterToFuture/internal/model"
 	"LetterToFuture/internal/telegram"
+	"LetterToFuture/pkg"
 )
 
 const MAX_MESSAGE_LIMIT = 4095
+
+var (
+	helpText = "Я отправляю письма в будущее. Как это работает? " +
+		"Ты присылаешь мне письмо, которое хочешь получить на какую-то конкретную дату в будущем. Затем, тебе будет дана " +
+		"возможность указать свою почту, на которую ты желаешь получить то самое послание. " +
+		"Имей в виду, что после процесса отправки своего письма, я его удалю из чата, для того, чтобы сохранить интригу и дать твоему мозгу возможность забыть " +
+		"о нем! Ты оставляешь сто рублей в зимней куртке и благополучно забываешь о них, а через сезон надеваешь ее и \"ого, ничего себе\" - ты нащупываешь те самые рубли и радуешься! " +
+		"Здесь принцип схожий)" +
+		" Для того чтобы начать вызовете команду /goletter"
+)
 
 func main() {
 	server := apiserver.NewAPIServer()
@@ -21,6 +32,7 @@ func main() {
 	if err := server.Start(); err != nil {
 		server.Logger.Fatal(err)
 	}
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -44,6 +56,8 @@ func main() {
 
 	model2 := model.TemporaryModel()
 
+	modelDelete := model.NewDeleteModel()
+
 	for update := range updates {
 		if update.Message.Text != "" { // If we got a message
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
@@ -55,7 +69,7 @@ func main() {
 				bot.Send(msg)
 			case "help":
 				commands.CommandMode(update.Message.Command())
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Я отправляю письма в будущее. Для того чтобы начать вызовете команду /goletter")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpText)
 				bot.Send(msg)
 			case "goletter":
 				commands.CommandMode(update.Message.Command())
@@ -78,21 +92,40 @@ func main() {
 						continue
 					} else {
 						if model2.Letter == "" {
+							modelDelete.MessageId = update.Message.MessageID
 							model2.Letter = update.Message.Text
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Теперь введите вашу почту:")
-
 							bot.Send(msg)
 						} else if model2.Email == "" {
-							model2.Email = update.Message.Text
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Теперь введите дату:")
+							if pkg.ValidateEmail(update.Message.Text) != false {
+								model2.Email = update.Message.Text
+							} else {
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Проверьте правильность введенной почты!")
+								bot.Send(msg)
+								continue
+							}
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Отлично, теперь введите дату:")
 							bot.Send(msg)
 						} else if model2.Date == "" {
-							model2.Date = update.Message.Text
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо!")
+							if pkg.DateValidation(update.Message.Text) != false {
+								model2.Date = update.Message.Text
+							} else {
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Проверьте правильность введенной даты! Дата должна быть в формате"+
+									" yyyy-mm-dd")
+								bot.Send(msg)
+								continue
+							}
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо! Ваше письмо будет удалено из чата через пару минут! Удачи!")
 							bot.Send(msg)
-							fmt.Println(model2)
+							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, model2.Letter))
+
+							go func() {
+								time.Sleep(time.Minute * 5)
+								letterToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.MessageId)
+								bot.Send(letterToDelete)
+							}()
+
 						}
-						//server.Store.CreateALetter(model.NewModel("dsfafdasfasdfasd", "2222-11-11", textMsg))
 					}
 
 				}

@@ -7,6 +7,15 @@ type Model struct {
 	Letter string
 }
 
+type DeleteModel struct {
+	MessageId int
+}
+
+func NewDeleteModel() *DeleteModel {
+	return &DeleteModel{}
+
+}
+
 func NewModel(email string, date string, letter string) *Model {
 	return &Model{Email: email, Date: date, Letter: letter}
 }
