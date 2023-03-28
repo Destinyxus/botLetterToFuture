@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -92,6 +93,7 @@ func main() {
 						continue
 					} else {
 						if model2.Letter == "" {
+							fmt.Println(model2.Letter)
 							modelDelete.MessageId = update.Message.MessageID
 							model2.Letter = update.Message.Text
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Теперь введите вашу почту:")
@@ -111,13 +113,16 @@ func main() {
 								model2.Date = update.Message.Text
 							} else {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Проверьте правильность введенной даты! Дата должна быть в формате"+
-									" yyyy-mm-dd")
+									" yyyy-mm-dd. Кроме того, проверьте еще раз точность своей даты, я могу сохранять ваши письма только до 2025-03-28")
 								bot.Send(msg)
 								continue
 							}
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо! Ваше письмо будет удалено из чата через пару минут! Удачи!")
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо! Ваше письмо будет удалено из чата через пару минут! Если вы хотите отправить еще одно"+
+								" письмо в будущее, нажмите /goletter. Удачи!")
 							bot.Send(msg)
 							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, model2.Letter))
+							fmt.Println(model2)
+							pkg.UpdateStruct(model2)
 
 							go func() {
 								time.Sleep(time.Minute * 5)

@@ -5,6 +5,7 @@ type Model struct {
 	Email  string
 	Date   string
 	Letter string
+	Sent   bool
 }
 
 type DeleteModel struct {

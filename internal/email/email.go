@@ -22,21 +22,19 @@ func NewEmail(store *store.Store) *Email {
 	}
 }
 
-func (s *Email) SendEmail() {
+func (s *Email) SendEmail(email, letter string) {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 	token := os.Getenv("SENDGRID_API_KEY")
-	a, _ := s.Store.GetEmail(29)
-	fmt.Println(a.Email)
 
-	from := mail.NewEmail("Example User", "vldmrbusiness@gmail.com")
+	from := mail.NewEmail("botLetterToFuture", "vldmrbusiness@gmail.com")
 
-	subject := "Sending with SendGrid is Fun"
-	to := mail.NewEmail("Example User", a.Email)
-	plainTextContent := "and easy to do anywhere, even with Go"
-	htmlContent := "<strong>and easy to do anywhere, even with Go</strong>"
+	subject := "LetterFromPast"
+	to := mail.NewEmail("Example User", email)
+	plainTextContent := ""
+	htmlContent := letter
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
 	client := sendgrid.NewSendClient(token)
 	response, err := client.Send(message)

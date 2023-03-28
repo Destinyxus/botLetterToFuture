@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"time"
 
 	"LetterToFuture/internal/model"
 
@@ -29,15 +31,17 @@ func (s *Store) Open() error {
 	}
 	fmt.Println("openned")
 	s.db = db
+
 	return nil
 }
 
 func (s *Store) CreateAccountTable() error {
 	query := `create table if not exists letters (
     			id bigserial primary key,
-    			email varchar(100) unique not null,
+    			email varchar(100) not null,
     			text_date date not null,
-    			letter varchar not null
+    			letter varchar not null,
+    			sent boolean default false
     )`
 
 	_, err := s.db.Exec(query)
@@ -47,17 +51,36 @@ func (s *Store) CreateAccountTable() error {
 	fmt.Println("creeated")
 	return err
 }
-func (s *Store) GetEmail(id int) (*model.Model, error) {
-	row, err := s.db.Query("SELECT email FROM letters WHERE id = $1", id)
+
+func (s *Store) GetLetter() ([]*model.Model, error) {
+
+	currentDate := time.Now().Format("2006-01-02")
+	row, err := s.db.Query("SELECT email, letter FROM letters WHERE text_date = $1 AND sent = false", currentDate)
 	if err != nil {
 		return nil, err
 	}
+	defer row.Close()
+	var letters []*model.Model
 	model1 := &model.Model{}
+
 	for row.Next() {
-		err = row.Scan(&model1.Email)
+		err = row.Scan(&model1.Email, &model1.Letter)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		letters = append(letters, model1)
 	}
 
-	return model1, nil
+	return letters, nil
+}
+
+func (s *Store) IsSent(email string) error {
+	_, err := s.db.Exec("UPDATE letters SET sent=true WHERE email = $1", email)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) CreateALetter(m *model.Model) error {
