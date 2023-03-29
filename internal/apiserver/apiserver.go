@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"LetterToFuture/internal/email"
+	"LetterToFuture/internal/encryptedLetter"
 	"LetterToFuture/internal/store"
 )
 
@@ -56,8 +57,13 @@ func (s *APIServer) configureEmail() {
 				continue
 			}
 			for _, letter := range letters {
-				fmt.Println(letter.Letter)
-				s.Email.SendEmail(letter.Email, letter.Letter)
+				enc := encryptedLetter.NewEncrypter()
+				decrypt, err := enc.Decrypt(letter.EncryptedLetter)
+				if err != nil {
+					return
+				}
+
+				s.Email.SendEmail(letter.Email, decrypt)
 				if err := s.Store.IsSent(letter.Email); err != nil {
 					fmt.Errorf("error")
 				}

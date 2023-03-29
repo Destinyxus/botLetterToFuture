@@ -1,11 +1,12 @@
 package model
 
 type Model struct {
-	Id     int
-	Email  string
-	Date   string
-	Letter string
-	Sent   bool
+	Id              int
+	Email           string
+	Date            string
+	Letter          string
+	EncryptedLetter string
+	Sent            bool
 }
 
 type DeleteModel struct {
@@ -18,7 +19,7 @@ func NewDeleteModel() *DeleteModel {
 }
 
 func NewModel(email string, date string, letter string) *Model {
-	return &Model{Email: email, Date: date, Letter: letter}
+	return &Model{Email: email, Date: date, EncryptedLetter: letter}
 }
 
 func TemporaryModel() *Model {

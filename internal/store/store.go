@@ -29,7 +29,7 @@ func (s *Store) Open() error {
 	if err := db.Ping(); err != nil {
 		return err
 	}
-	fmt.Println("openned")
+	fmt.Println("opened")
 	s.db = db
 
 	return nil
@@ -40,7 +40,7 @@ func (s *Store) CreateAccountTable() error {
     			id bigserial primary key,
     			email varchar(100) not null,
     			text_date date not null,
-    			letter varchar not null,
+    			encrypted_letter varchar not null,
     			sent boolean default false
     )`
 
@@ -48,14 +48,14 @@ func (s *Store) CreateAccountTable() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("creeated")
+	fmt.Println("created")
 	return err
 }
 
 func (s *Store) GetLetter() ([]*model.Model, error) {
 
 	currentDate := time.Now().Format("2006-01-02")
-	row, err := s.db.Query("SELECT email, letter FROM letters WHERE text_date = $1 AND sent = false", currentDate)
+	row, err := s.db.Query("SELECT email, encrypted_letter FROM letters WHERE text_date = $1 AND sent = false", currentDate)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (s *Store) GetLetter() ([]*model.Model, error) {
 	model1 := &model.Model{}
 
 	for row.Next() {
-		err = row.Scan(&model1.Email, &model1.Letter)
+		err = row.Scan(&model1.Email, &model1.EncryptedLetter)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -84,7 +84,7 @@ func (s *Store) IsSent(email string) error {
 }
 
 func (s *Store) CreateALetter(m *model.Model) error {
-	query := fmt.Sprintf("insert into letters (email,text_date,letter) values ('%s','%s','%s')", m.Email, m.Date, m.Letter)
+	query := fmt.Sprintf("insert into letters (email,text_date,encrypted_letter) values ('%s','%s','%s')", m.Email, m.Date, m.EncryptedLetter)
 
 	if _, err := s.db.Exec(query); err != nil {
 		return err

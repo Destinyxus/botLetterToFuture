@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"LetterToFuture/internal/apiserver"
+	"LetterToFuture/internal/encryptedLetter"
 	"LetterToFuture/internal/model"
 	"LetterToFuture/internal/telegram"
 	"LetterToFuture/pkg"
@@ -120,8 +121,16 @@ func main() {
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо! Ваше письмо будет удалено из чата через пару минут! Если вы хотите отправить еще одно"+
 								" письмо в будущее, нажмите /goletter. Удачи!")
 							bot.Send(msg)
-							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, model2.Letter))
-							fmt.Println(model2)
+							enc := encryptedLetter.NewEncrypter()
+							encrypt, err := enc.Encrypt(model2.Letter)
+							if err != nil {
+								return
+							}
+							if err != nil {
+								log.Fatal(err)
+							}
+							
+							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, encrypt))
 							pkg.UpdateStruct(model2)
 
 							go func() {
