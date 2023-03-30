@@ -3,13 +3,12 @@ package email
 import (
 	"fmt"
 	"log"
-	"os"
 
-	"github.com/joho/godotenv"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 
-	"LetterToFuture/internal/store"
+	"github.com/Destinyxus/botLetterToFuture/internal/store"
+	"github.com/Destinyxus/botLetterToFuture/pkg/config"
 )
 
 type Email struct {
@@ -22,21 +21,16 @@ func NewEmail(store *store.Store) *Email {
 	}
 }
 
-func (s *Email) SendEmail(email, letter string) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	token := os.Getenv("SENDGRID_API_KEY")
+func (s *Email) SendEmail(email, letter string, cfg *config.Config) {
 
-	from := mail.NewEmail("botLetterToFuture", "vldmrbusiness@gmail.com")
+	from := mail.NewEmail("botLetterToFuture", "lettertofuturebot@gmail.com")
 
-	subject := "LetterFromPast"
-	to := mail.NewEmail("Example User", email)
+	subject := "Письмо из прошлого"
+	to := mail.NewEmail("", email)
 	plainTextContent := ""
 	htmlContent := letter
 	message := mail.NewSingleEmail(from, subject, to, plainTextContent, htmlContent)
-	client := sendgrid.NewSendClient(token)
+	client := sendgrid.NewSendClient(cfg.SendGridKey)
 	response, err := client.Send(message)
 
 	if err != nil {

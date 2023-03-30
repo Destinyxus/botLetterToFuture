@@ -6,7 +6,8 @@ import (
 	"log"
 	"time"
 
-	"LetterToFuture/internal/model"
+	"github.com/Destinyxus/botLetterToFuture/internal/model"
+	"github.com/Destinyxus/botLetterToFuture/pkg/config"
 
 	_ "github.com/lib/pq"
 )
@@ -19,8 +20,9 @@ func NewStore() *Store {
 	return &Store{}
 }
 
-func (s *Store) Open() error {
-	db, err := sql.Open("postgres", "user=postgres host=localhost dbname=future_letter password=10120001 sslmode=disable")
+func (s *Store) Open(cfg *config.Config) error {
+
+	db, err := sql.Open("postgres", cfg.StoreURL)
 	if err != nil {
 		return err
 

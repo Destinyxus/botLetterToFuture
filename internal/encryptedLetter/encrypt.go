@@ -5,16 +5,17 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+
+	_ "github.com/Destinyxus/botLetterToFuture/pkg/config"
 )
 
 type EncrypterDecrypter interface {
-	Encrypt(letter string) (string, error)
+	Encrypt(letter string, key string) (string, error)
 	Decrypt(letter string) (string, error)
 }
 
@@ -36,13 +37,9 @@ func decodeBase64(s string) []byte {
 	return data
 }
 
-func (e *encrypter) Encrypt(letter string) (string, error) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	token := os.Getenv("HASH_KEY")
-	block, err := aes.NewCipher([]byte(token))
+func (e *encrypter) Encrypt(letter string, key string) (string, error) {
+
+	block, err := aes.NewCipher([]byte(key))
 	if err != nil {
 		return "", err
 	}
@@ -67,7 +64,6 @@ func (e *encrypter) Decrypt(letter string) (string, error) {
 		return "", err
 	}
 	cipherText := decodeBase64(letter)
-	fmt.Println(cipherText)
 	iv := cipherText[:aes.BlockSize]
 	cipherText = cipherText[aes.BlockSize:]
 	cfb := cipher.NewCFBDecrypter(block, iv)

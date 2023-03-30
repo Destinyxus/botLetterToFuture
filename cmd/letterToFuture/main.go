@@ -3,44 +3,34 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/joho/godotenv"
 
-	"LetterToFuture/internal/apiserver"
-	"LetterToFuture/internal/encryptedLetter"
-	"LetterToFuture/internal/model"
-	"LetterToFuture/internal/telegram"
-	"LetterToFuture/pkg"
+	"github.com/Destinyxus/botLetterToFuture/internal/apiserver"
+	"github.com/Destinyxus/botLetterToFuture/internal/encryptedLetter"
+	"github.com/Destinyxus/botLetterToFuture/internal/model"
+	"github.com/Destinyxus/botLetterToFuture/internal/telegram"
+	"github.com/Destinyxus/botLetterToFuture/pkg"
+	"github.com/Destinyxus/botLetterToFuture/pkg/config"
 )
 
 const MAX_MESSAGE_LIMIT = 4095
 
-var (
-	helpText = "Я отправляю письма в будущее. Как это работает? " +
-		"Ты присылаешь мне письмо, которое хочешь получить на какую-то конкретную дату в будущем. Затем, тебе будет дана " +
-		"возможность указать свою почту, на которую ты желаешь получить то самое послание. " +
-		"Имей в виду, что после процесса отправки своего письма, я его удалю из чата, для того, чтобы сохранить интригу и дать твоему мозгу возможность забыть " +
-		"о нем! Ты оставляешь сто рублей в зимней куртке и благополучно забываешь о них, а через сезон надеваешь ее и \"ого, ничего себе\" - ты нащупываешь те самые рубли и радуешься! " +
-		"Здесь принцип схожий)" +
-		" Для того чтобы начать вызовете команду /goletter"
-)
-
 func main() {
-	server := apiserver.NewAPIServer()
+
+	cfg, err := config.Init()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	server := apiserver.NewAPIServer(cfg)
 
 	if err := server.Start(); err != nil {
 		server.Logger.Fatal(err)
 	}
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	token := os.Getenv("TELEGRAM_TOKEN")
-	bot, err := tgbotapi.NewBotAPI(token)
+	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -66,30 +56,29 @@ func main() {
 			switch update.Message.Command() {
 			case "start":
 				commands.CommandMode(update.Message.Command())
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Привет, "+update.Message.From.UserName+"! Это бот \"Письма в будущее\". "+
-					"Чтобы ознакомиться поподробнее с тем, что я умею, вызовете комманду /help.")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Start)
 				bot.Send(msg)
 			case "help":
 				commands.CommandMode(update.Message.Command())
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, helpText)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.HelpText)
 				bot.Send(msg)
 			case "goletter":
 				commands.CommandMode(update.Message.Command())
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Отправьте текст своего письма:")
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Goletter)
 				bot.Send(msg)
 			default:
 				if commands.Start == true {
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нажмите /help")
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.StartTrue)
 					bot.Send(msg)
 				}
 				if commands.Help == true {
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Нажмите /goletter")
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.HelpTrue)
 					bot.Send(msg)
 				}
 				if commands.Goletter == true {
 					textMsg := update.Message.Text
 					if len(textMsg) > MAX_MESSAGE_LIMIT {
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Извини, я не могу сохранить такое большое письмо. Сократите его и попробуйте еще раз!")
+						msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.SizeLetter)
 						bot.Send(msg)
 						continue
 					} else {
@@ -97,39 +86,37 @@ func main() {
 							fmt.Println(model2.Letter)
 							modelDelete.MessageId = update.Message.MessageID
 							model2.Letter = update.Message.Text
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Теперь введите вашу почту:")
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Email)
 							bot.Send(msg)
 						} else if model2.Email == "" {
 							if pkg.ValidateEmail(update.Message.Text) != false {
 								model2.Email = update.Message.Text
 							} else {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Проверьте правильность введенной почты!")
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.InvalidEmail)
 								bot.Send(msg)
 								continue
 							}
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Отлично, теперь введите дату:")
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Date)
 							bot.Send(msg)
 						} else if model2.Date == "" {
 							if pkg.DateValidation(update.Message.Text) != false {
 								model2.Date = update.Message.Text
 							} else {
-								msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Проверьте правильность введенной даты! Дата должна быть в формате"+
-									" yyyy-mm-dd. Кроме того, проверьте еще раз точность своей даты, я могу сохранять ваши письма только до 2025-03-28")
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.InvalidDate)
 								bot.Send(msg)
 								continue
 							}
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Спасибо! Ваше письмо будет удалено из чата через пару минут! Если вы хотите отправить еще одно"+
-								" письмо в будущее, нажмите /goletter. Удачи!")
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Result)
 							bot.Send(msg)
 							enc := encryptedLetter.NewEncrypter()
-							encrypt, err := enc.Encrypt(model2.Letter)
+							encrypt, err := enc.Encrypt(model2.Letter, cfg.HashKey)
 							if err != nil {
 								return
 							}
 							if err != nil {
 								log.Fatal(err)
 							}
-							
+
 							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, encrypt))
 							pkg.UpdateStruct(model2)
 
