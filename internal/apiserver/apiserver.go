@@ -5,20 +5,24 @@ import (
 	"log"
 	"time"
 
-	"LetterToFuture/internal/email"
-	"LetterToFuture/internal/store"
+	"github.com/Destinyxus/botLetterToFuture/internal/email"
+	"github.com/Destinyxus/botLetterToFuture/internal/encryptedLetter"
+	"github.com/Destinyxus/botLetterToFuture/internal/store"
+	"github.com/Destinyxus/botLetterToFuture/pkg/config"
 )
 
 type APIServer struct {
 	Logger *log.Logger
 	Store  *store.Store
 	Email  *email.Email
+	Config *config.Config
 }
 
-func NewAPIServer() *APIServer {
+func NewAPIServer(config *config.Config) *APIServer {
 	s := &APIServer{
 		Logger: &log.Logger{},
 		Store:  store.NewStore(),
+		Config: config,
 	}
 	s.Email = email.NewEmail(s.Store)
 	return s
@@ -32,7 +36,7 @@ func (s *APIServer) Start() error {
 
 func (s *APIServer) configureStore() error {
 
-	if err := s.Store.Open(); err != nil {
+	if err := s.Store.Open(s.Config); err != nil {
 		return err
 	}
 
@@ -56,8 +60,13 @@ func (s *APIServer) configureEmail() {
 				continue
 			}
 			for _, letter := range letters {
-				fmt.Println(letter.Letter)
-				s.Email.SendEmail(letter.Email, letter.Letter)
+				enc := encryptedLetter.NewEncrypter()
+				decrypt, err := enc.Decrypt(letter.EncryptedLetter)
+				if err != nil {
+					return
+				}
+
+				s.Email.SendEmail(letter.Email, decrypt, s.Config)
 				if err := s.Store.IsSent(letter.Email); err != nil {
 					fmt.Errorf("error")
 				}

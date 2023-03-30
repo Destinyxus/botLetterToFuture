@@ -1,6 +1,6 @@
 package pkg
 
-import "LetterToFuture/internal/model"
+import "github.com/Destinyxus/botLetterToFuture/internal/model"
 
 func UpdateStruct(m *model.Model) {
 	m.Letter = ""
