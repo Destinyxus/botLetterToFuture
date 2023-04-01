@@ -12,6 +12,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const newDB = "letters"
+
 type Store struct {
 	db *sql.DB
 }
@@ -21,17 +23,17 @@ func NewStore() *Store {
 }
 
 func (s *Store) Open(cfg *config.Config) error {
-
+	fmt.Println(cfg.StoreURL)
 	db, err := sql.Open("postgres", cfg.StoreURL)
 	if err != nil {
-		return err
-
+		panic(err)
 	}
 
 	if err := db.Ping(); err != nil {
 		return err
 	}
 	fmt.Println("opened")
+
 	s.db = db
 
 	return nil

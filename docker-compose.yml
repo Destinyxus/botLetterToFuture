@@ -1,0 +1,28 @@
+  version: '3.8'
+
+  services:
+      telegram-bot:
+        build: ./
+        command: ./telegramBot
+        ports:
+          - "8080:8080"
+        depends_on:
+          - db
+        environment:
+            - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+            - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+            - STORE_URL=${STORE_URL}
+            - HASH_KEY=${HASH_KEY}
+        env_file:
+          - .env
+
+
+      db:
+        restart: always
+        image: postgres:latest
+        volumes:
+          - ./.database/postgres/data:/var/lib/postgresql/data
+        environment:
+         - STORE_URL=${STORE_URL}
+        ports:
+          - "5432:5432"

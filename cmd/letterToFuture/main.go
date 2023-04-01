@@ -118,6 +118,7 @@ func main() {
 							}
 
 							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, encrypt))
+
 							pkg.UpdateStruct(model2)
 
 							go func() {
