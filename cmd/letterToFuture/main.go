@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -45,13 +44,12 @@ func main() {
 	updates := bot.GetUpdatesChan(u)
 
 	commands := telegram.NewCommands()
-
 	model2 := model.TemporaryModel()
 
 	modelDelete := model.NewDeleteModel()
 
 	for update := range updates {
-		if update.Message.Text != "" { // If we got a message
+		if update.Message != nil && update.Message.Text != "" {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 			switch update.Message.Command() {
 			case "start":
@@ -66,6 +64,23 @@ func main() {
 				commands.CommandMode(update.Message.Command())
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Goletter)
 				bot.Send(msg)
+				model2.Letter = ""
+				model2.Email = ""
+				model2.Date = ""
+			case "stop":
+				commands.CommandMode(update.Message.Command())
+				deleteMsg := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
+				bot.Send(deleteMsg)
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Сессия окончена, если вы желаете начать сначала, нажмите /start.")
+				bot.Send(msg)
+				pkg.UpdateStruct(model2)
+				letterToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.LetterId)
+				dateToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.DateId)
+				emailToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.EmailId)
+				bot.Send(letterToDelete)
+				bot.Send(dateToDelete)
+				bot.Send(emailToDelete)
+				continue
 			default:
 				if commands.Start == true {
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.StartTrue)
@@ -83,23 +98,24 @@ func main() {
 						continue
 					} else {
 						if model2.Letter == "" {
-							fmt.Println(model2.Letter)
-							modelDelete.MessageId = update.Message.MessageID
+							modelDelete.LetterId = update.Message.MessageID
 							model2.Letter = update.Message.Text
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Email)
 							bot.Send(msg)
 						} else if model2.Email == "" {
 							if pkg.ValidateEmail(update.Message.Text) != false {
+								modelDelete.EmailId = update.Message.MessageID
 								model2.Email = update.Message.Text
+								msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Date)
+								bot.Send(msg)
 							} else {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.InvalidEmail)
 								bot.Send(msg)
 								continue
 							}
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.Date)
-							bot.Send(msg)
 						} else if model2.Date == "" {
 							if pkg.DateValidation(update.Message.Text) != false {
+								modelDelete.DateId = update.Message.MessageID
 								model2.Date = update.Message.Text
 							} else {
 								msg := tgbotapi.NewMessage(update.Message.Chat.ID, cfg.Messages.InvalidDate)
@@ -120,11 +136,16 @@ func main() {
 							server.Store.CreateALetter(model.NewModel(model2.Email, model2.Date, encrypt))
 
 							pkg.UpdateStruct(model2)
+							commands.CommandMode("reset")
 
 							go func() {
 								time.Sleep(time.Minute * 5)
-								letterToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.MessageId)
+								letterToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.LetterId)
+								dateToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.DateId)
+								emailToDelete := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, modelDelete.EmailId)
 								bot.Send(letterToDelete)
+								bot.Send(dateToDelete)
+								bot.Send(emailToDelete)
 							}()
 
 						}
@@ -132,7 +153,7 @@ func main() {
 
 				}
 			}
-		} else {
+		} else if update.Message != nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "К сожалению, я принимаю только текстовый формат."+
 				" Нажмите /help"))
 		}

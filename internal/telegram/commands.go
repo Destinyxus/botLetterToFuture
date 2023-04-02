@@ -3,6 +3,7 @@ package telegram
 type Commands struct {
 	Start    bool
 	Help     bool
+	Stop     bool
 	Goletter bool
 }
 
@@ -10,6 +11,7 @@ func NewCommands() *Commands {
 	return &Commands{
 		Start:    false,
 		Help:     false,
+		Stop:     false,
 		Goletter: false,
 	}
 }
@@ -28,5 +30,12 @@ func (c *Commands) CommandMode(cmd string) {
 		c.Goletter = true
 		c.Help = false
 		c.Start = false
+	case "reset":
+		c.Goletter = false
+	case "stop":
+		c.Start = false
+		c.Help = false
+		c.Goletter = false
+		c.Stop = false
 	}
 }

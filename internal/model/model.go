@@ -10,7 +10,9 @@ type Model struct {
 }
 
 type DeleteModel struct {
-	MessageId int
+	LetterId int
+	DateId   int
+	EmailId  int
 }
 
 func NewDeleteModel() *DeleteModel {
