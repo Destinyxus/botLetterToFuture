@@ -32,7 +32,13 @@ func DateValidation(s string) bool {
 		return false
 	}
 
-	if date.Before(from) || date.After(to) {
+	now := time.Now().Format(dateFormat)
+	currentDate, err := time.Parse(dateFormat, now)
+	if err != nil {
+		return false
+	}
+
+	if date.Before(from) || date.After(to) || date.Before(currentDate) {
 		return false
 	}
 	return true

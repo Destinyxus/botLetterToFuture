@@ -40,11 +40,6 @@ func (s *APIServer) configureStore() error {
 		return err
 	}
 
-	if err := s.Store.CreateAccountTable(); err != nil {
-		return err
-
-	}
-
 	return nil
 }
 
@@ -59,6 +54,7 @@ func (s *APIServer) configureEmail() {
 				log.Println(err)
 				continue
 			}
+
 			for _, letter := range letters {
 				enc := encryptedLetter.NewEncrypter()
 				decrypt, err := enc.Decrypt(letter.EncryptedLetter)
@@ -67,7 +63,7 @@ func (s *APIServer) configureEmail() {
 				}
 
 				s.Email.SendEmail(letter.Email, decrypt, s.Config)
-				if err := s.Store.IsSent(letter.Email); err != nil {
+				if err := s.Store.IsSent(letter.ID); err != nil {
 					fmt.Errorf("error")
 				}
 

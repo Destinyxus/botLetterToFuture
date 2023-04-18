@@ -1,7 +1,6 @@
 package model
 
 type Model struct {
-	Id              int
 	Email           string
 	Date            string
 	Letter          string
