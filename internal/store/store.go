@@ -1,10 +1,11 @@
 package store
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
 	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/Destinyxus/botLetterToFuture/internal/model"
 	"github.com/Destinyxus/botLetterToFuture/pkg/config"
@@ -12,10 +13,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const newDB = "letters"
+type Letter struct {
+	ID              int    `gorm:"primaryKey;autoIncrement"`
+	Email           string `gorm:"not null"`
+	Date            string `gorm:"not null"`
+	EncryptedLetter string `gorm:"not null"`
+	Sent            bool   `gorm:"default:false"`
+}
 
 type Store struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 func NewStore() *Store {
@@ -23,64 +30,12 @@ func NewStore() *Store {
 }
 
 func (s *Store) Open(cfg *config.Config) error {
-	fmt.Println(cfg.StoreURL)
-	db, err := sql.Open("postgres", cfg.StoreURL)
+	db, err := gorm.Open(postgres.Open(cfg.StoreURL), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		log.Fatal("failed to connect to db")
 	}
-
-	if err := db.Ping(); err != nil {
-		return err
-	}
-	fmt.Println("opened")
-
 	s.db = db
-
-	return nil
-}
-
-func (s *Store) CreateAccountTable() error {
-	query := `create table if not exists letters (
-    			id bigserial primary key,
-    			email varchar(100) not null,
-    			text_date date not null,
-    			encrypted_letter varchar not null,
-    			sent boolean default false
-    )`
-
-	_, err := s.db.Exec(query)
-	if err != nil {
-		return err
-	}
-	fmt.Println("created")
-	return err
-}
-
-func (s *Store) GetLetter() ([]*model.Model, error) {
-
-	currentDate := time.Now().Format("2006-01-02")
-	row, err := s.db.Query("SELECT email, encrypted_letter FROM letters WHERE text_date = $1 AND sent = false", currentDate)
-	if err != nil {
-		return nil, err
-	}
-	defer row.Close()
-	var letters []*model.Model
-	model1 := &model.Model{}
-
-	for row.Next() {
-		err = row.Scan(&model1.Email, &model1.EncryptedLetter)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		letters = append(letters, model1)
-	}
-
-	return letters, nil
-}
-
-func (s *Store) IsSent(email string) error {
-	_, err := s.db.Exec("UPDATE letters SET sent=true WHERE email = $1", email)
+	err = s.db.AutoMigrate(&Letter{})
 	if err != nil {
 		return err
 	}
@@ -88,12 +43,33 @@ func (s *Store) IsSent(email string) error {
 }
 
 func (s *Store) CreateALetter(m *model.Model) error {
-	query := fmt.Sprintf("insert into letters (email,text_date,encrypted_letter) values ('%s','%s','%s')", m.Email, m.Date, m.EncryptedLetter)
-
-	if _, err := s.db.Exec(query); err != nil {
-		return err
+	letter := &Letter{
+		Email:           m.Email,
+		Date:            m.Date,
+		EncryptedLetter: m.EncryptedLetter,
 	}
+	if err := s.db.Create(letter).Error; err != nil {
+		return err
 
+	}
 	return nil
+}
 
+func (s *Store) GetLetter() ([]*Letter, error) {
+	currentDate := time.Now().Format("2006-01-02")
+	var letters []*Letter
+	if err := s.db.Where("date = ? AND sent = ?", currentDate, false).Find(&letters).Error; err != nil {
+		return nil, err
+	}
+	return letters, nil
+
+}
+
+func (s *Store) IsSent(id int) error {
+	letter := &Letter{}
+	result := s.db.Model(letter).Where("id = ?", id).Update("sent", true)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
 }
