@@ -53,33 +53,37 @@ func Init() {
 	for update := range updates {
 		if update.Message != nil && update.Message.Text != "" {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-			switch update.Message.Command() {
-			case "start":
-				handleStart(bot, update.Message.Command(), update.Message.Chat.ID, cfg)
-			case "help":
-				handleHelp(bot, update.Message.Command(), update.Message.Chat.ID, cfg)
-			case "goletter":
-				handleGoLetter(bot, update.Message.Command(), update.Message.Chat.ID, cfg)
-			case "stop":
-				handleStop(bot, update.Message.Command(), update.Message.Chat.ID, update.Message.MessageID, cfg)
-				continue
-			default:
-				if commands.Start == true {
-					handleIsStart(bot, update.Message.Chat.ID, cfg)
-				}
-				if commands.Help == true {
-					handleIsHelp(bot, update.Message.Chat.ID, cfg)
-				}
-				if commands.Goletter == true {
-					handleGoLetterFinal(bot, update.Message.Command(), update.Message.Chat.ID, update.Message.MessageID, update.Message.Text, update.Message.Chat.UserName, cfg, server)
-				}
-			}
+			handleCommands(bot, update.Message.Command(), update.Message.Chat.ID, update.Message.MessageID, update.Message.Text, update.Message.Chat.UserName, cfg, server)
 		} else if update.Message != nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "К сожалению, я принимаю только текстовый формат."+
 				" Нажмите /help"))
 		}
 	}
 
+}
+
+func handleCommands(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, messageID int, textMessage string, userName string, cfg *config.Config, server *apiserver.APIServer) {
+	switch updateCommand {
+	case "start":
+		handleStart(bot, updateCommand, messageChatID, cfg)
+	case "help":
+		handleHelp(bot, updateCommand, messageChatID, cfg)
+	case "goletter":
+		handleGoLetter(bot, updateCommand, messageChatID, cfg)
+	case "stop":
+		handleStop(bot, updateCommand, messageChatID, messageID, cfg)
+		return
+	default:
+		if commands.Start == true {
+			handleIsStart(bot, messageChatID, cfg)
+		}
+		if commands.Help == true {
+			handleIsHelp(bot, messageChatID, cfg)
+		}
+		if commands.Goletter == true {
+			handleGoLetterFinal(bot, updateCommand, messageChatID, messageID, textMessage, userName, cfg, server)
+		}
+	}
 }
 
 func handleStart(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, cfg *config.Config) {
