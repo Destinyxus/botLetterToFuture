@@ -1,6 +1,7 @@
 package model
 
-type Model struct {
+type User struct {
+	UserName        string
 	Email           string
 	Date            string
 	Letter          string
@@ -8,21 +9,25 @@ type Model struct {
 	Sent            bool
 }
 
-type DeleteModel struct {
+func NewConfigUser() *User {
+	return &User{}
+}
+
+type DeleteUser struct {
 	LetterId int
 	DateId   int
 	EmailId  int
 }
 
-func NewDeleteModel() *DeleteModel {
-	return &DeleteModel{}
+func NewDeleteModel() *DeleteUser {
+	return &DeleteUser{}
 
 }
 
-func NewModel(email string, date string, letter string) *Model {
-	return &Model{Email: email, Date: date, EncryptedLetter: letter}
+func NewUser(email string, date string, letter string) *User {
+	return &User{Email: email, Date: date, EncryptedLetter: letter}
 }
 
-func TemporaryModel() *Model {
-	return &Model{}
+func TemporaryUser() *User {
+	return &User{}
 }

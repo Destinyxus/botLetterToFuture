@@ -1,9 +1,9 @@
 package store
 
 import (
-	"log"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
@@ -22,36 +22,48 @@ type Letter struct {
 }
 
 type Store struct {
-	db *gorm.DB
+	db  *gorm.DB
+	log *logrus.Entry
 }
 
-func NewStore() *Store {
-	return &Store{}
+func NewStore(log *logrus.Entry) *Store {
+	return &Store{
+		log: log.WithFields(logrus.Fields{
+			"package": "store",
+		}),
+	}
 }
 
 func (s *Store) Open(cfg *config.Config) error {
 	db, err := gorm.Open(postgres.Open(cfg.StoreURL), &gorm.Config{})
 	if err != nil {
-		log.Fatal("failed to connect to db")
+		s.log.Error("Db connection error")
 	}
+	s.log.Info("Db opened")
 	s.db = db
 	err = s.db.AutoMigrate(&Letter{})
 	if err != nil {
-		return err
+		s.log.Errorf("%+v", err)
 	}
 	return nil
 }
 
-func (s *Store) CreateALetter(m *model.Model) error {
+func (s *Store) CreateALetter(m *model.User, userInfo *model.User) error {
 	letter := &Letter{
 		Email:           m.Email,
 		Date:            m.Date,
 		EncryptedLetter: m.EncryptedLetter,
 	}
 	if err := s.db.Create(letter).Error; err != nil {
-		return err
+		s.log.WithFields(logrus.Fields{
+			"UserName": userInfo.UserName,
+		}).Error("Creating letter error")
 
 	}
+
+	s.log.WithFields(logrus.Fields{
+		"UserName": userInfo.UserName,
+	}).Info("Letter successfully created")
 	return nil
 }
 
@@ -61,6 +73,7 @@ func (s *Store) GetLetter() ([]*Letter, error) {
 	if err := s.db.Where("date = ? AND sent = ?", currentDate, false).Find(&letters).Error; err != nil {
 		return nil, err
 	}
+
 	return letters, nil
 
 }
