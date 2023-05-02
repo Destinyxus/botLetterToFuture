@@ -9,6 +9,9 @@ type Config struct {
 	TelegramToken string
 	SendGridKey   string
 	StoreURL      string
+	WebHook       string
+	Pem           string
+	Key           string
 	HashKey       string
 	Messages      Messages
 }
@@ -81,6 +84,21 @@ func parseEnv(cfg *Config) error {
 		return err
 	}
 	cfg.HashKey = viper.GetString("hash_key")
+
+	if err := viper.BindEnv("web_hook"); err != nil {
+		return err
+	}
+	cfg.WebHook = viper.GetString("web_hook")
+
+	if err := viper.BindEnv("pem"); err != nil {
+		return err
+	}
+	cfg.Pem = viper.GetString("pem")
+
+	if err := viper.BindEnv("key"); err != nil {
+		return err
+	}
+	cfg.Key = viper.GetString("key")
 
 	return nil
 }

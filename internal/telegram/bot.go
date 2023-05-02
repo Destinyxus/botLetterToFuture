@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"log"
+	"net/http"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -44,11 +45,31 @@ func Init() {
 	bot.Debug = true
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+	cert := tgbotapi.FilePath(cfg.Pem)
+	if err != nil {
+		log.Fatal(err)
+	}
+	wh, err := tgbotapi.NewWebhookWithCert(cfg.WebHook, cert)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = bot.Request(wh)
+	if err != nil {
+		log.Fatal(err)
+	}
+	info, err := bot.GetWebhookInfo()
+	if info.LastErrorDate != 0 {
+		log.Printf("failed to set webhook: %s", info.LastErrorMessage)
+	}
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	updates := bot.ListenForWebhook("/")
 
-	updates := bot.GetUpdatesChan(u)
+	go func() {
+		err := http.ListenAndServeTLS(":8443", cfg.Pem, cfg.Key, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	for update := range updates {
 		if update.Message != nil && update.Message.Text != "" {
