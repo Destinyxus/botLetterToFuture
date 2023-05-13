@@ -15,7 +15,7 @@ import (
 
 type APIServer struct {
 	Logger *logrus.Logger
-	Store  *store.Store
+	Store  *store.MongoDB
 	Email  *email.Email
 	Config *config.Config
 	log    *logrus.Entry
@@ -29,9 +29,9 @@ func NewAPIServer(config *config.Config) *APIServer {
 	return &APIServer{
 		log:    logEntry,
 		Logger: logEntry.Logger,
-		Store:  store.NewStore(logEntry),
+		Store:  store.NewStoreMongo(logEntry),
 		Config: config,
-		Email:  email.NewEmail(store.NewStore(logEntry)),
+		Email:  email.NewEmail(store.NewStoreMongo(logEntry)),
 	}
 }
 

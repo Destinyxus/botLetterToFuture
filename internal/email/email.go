@@ -12,10 +12,10 @@ import (
 )
 
 type Email struct {
-	Store *store.Store
+	Store *store.MongoDB
 }
 
-func NewEmail(store *store.Store) *Email {
+func NewEmail(store *store.MongoDB) *Email {
 	return &Email{
 		Store: store,
 	}

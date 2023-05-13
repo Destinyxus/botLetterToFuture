@@ -9,6 +9,7 @@ import (
 	"github.com/Destinyxus/botLetterToFuture/internal/apiserver"
 	"github.com/Destinyxus/botLetterToFuture/internal/encryptedLetter"
 	"github.com/Destinyxus/botLetterToFuture/internal/model"
+	"github.com/Destinyxus/botLetterToFuture/internal/store"
 
 	"github.com/Destinyxus/botLetterToFuture/pkg"
 	"github.com/Destinyxus/botLetterToFuture/pkg/config"
@@ -35,6 +36,13 @@ func Init() {
 	if err := server.Start(); err != nil {
 		server.Logger.Fatal(err)
 	}
+
+	defer func(Store *store.MongoDB) {
+		err := Store.CloseConnection()
+		if err != nil {
+			panic(err)
+		}
+	}(server.Store)
 
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
