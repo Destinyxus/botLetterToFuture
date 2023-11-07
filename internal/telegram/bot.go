@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"flag"
 	"log"
 	"time"
 
@@ -26,7 +27,13 @@ var (
 )
 
 func Init() {
-	cfg, err := config.Init()
+	var (
+		path = flag.String("cfg-path", "main.toml", "")
+	)
+
+	flag.Parse()
+
+	cfg, err := config.New(*path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,19 +95,19 @@ func handleCommands(bot *tgbotapi.BotAPI, updateCommand string, messageChatID in
 
 func handleStart(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, cfg *config.Config) {
 	commands.CommandMode(updateCommand)
-	msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.Start)
+	msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.Start)
 	bot.Send(msg)
 }
 
 func handleHelp(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, cfg *config.Config) {
 	commands.CommandMode(updateCommand)
-	msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.HelpText)
+	msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.HelpText)
 	bot.Send(msg)
 }
 
 func handleGoLetter(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, cfg *config.Config) {
 	commands.CommandMode(updateCommand)
-	msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.Goletter)
+	msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.Goletter)
 	bot.Send(msg)
 	temporaryUser.Letter = ""
 	temporaryUser.Email = ""
@@ -126,35 +133,35 @@ func handleStop(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64,
 }
 
 func handleIsStart(bot *tgbotapi.BotAPI, messageChatID int64, cfg *config.Config) {
-	msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.StartTrue)
+	msg := tgbotapi.NewMessage(messageChatID, cfg.Errors.StartTrue)
 	bot.Send(msg)
 }
 
 func handleIsHelp(bot *tgbotapi.BotAPI, messageChatID int64, cfg *config.Config) {
-	msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.HelpTrue)
+	msg := tgbotapi.NewMessage(messageChatID, cfg.Errors.HelpTrue)
 	bot.Send(msg)
 }
 
 func handleGoLetterFinal(bot *tgbotapi.BotAPI, updateCommand string, messageChatID int64, messageID int, textMessage string, userName string, cfg *config.Config, server *apiserver.APIServer) {
 	textMsg := textMessage
 	if len(textMsg) > MaxMessageLimit {
-		msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.SizeLetter)
+		msg := tgbotapi.NewMessage(messageChatID, cfg.Errors.SizeLetter)
 		bot.Send(msg)
 		return
 	}
 	if temporaryUser.Letter == "" {
 		userToDelete.LetterId = messageID
 		temporaryUser.Letter = textMessage
-		msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.Email)
+		msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.Email)
 		bot.Send(msg)
 	} else if temporaryUser.Email == "" {
 		if pkg.ValidateEmail(textMessage) != false {
 			userToDelete.EmailId = messageID
 			temporaryUser.Email = textMessage
-			msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.Date)
+			msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.Date)
 			bot.Send(msg)
 		} else {
-			msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.InvalidEmail)
+			msg := tgbotapi.NewMessage(messageChatID, cfg.Errors.InvalidEmail)
 			bot.Send(msg)
 			return
 		}
@@ -163,11 +170,11 @@ func handleGoLetterFinal(bot *tgbotapi.BotAPI, updateCommand string, messageChat
 			userToDelete.DateId = messageID
 			temporaryUser.Date = textMessage
 		} else {
-			msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.InvalidDate)
+			msg := tgbotapi.NewMessage(messageChatID, cfg.Errors.InvalidDate)
 			bot.Send(msg)
 			return
 		}
-		msg := tgbotapi.NewMessage(messageChatID, cfg.Messages.Result)
+		msg := tgbotapi.NewMessage(messageChatID, cfg.Responses.Result)
 		bot.Send(msg)
 		enc := encryptedLetter.NewEncrypter()
 		encrypt, err := enc.Encrypt(temporaryUser.Letter, cfg.HashKey)

@@ -1,86 +1,43 @@
 package config
 
 import (
-	_ "github.com/joho/godotenv/autoload"
-	"github.com/spf13/viper"
+	"fmt"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type Config struct {
-	TelegramToken string
-	SendGridKey   string
-	StoreURL      string
-	HashKey       string
-	Messages      Messages
-}
-
-type Messages struct {
-	Responses
-	Errors
+	TelegramToken string `env:"TELEGRAM_TOKEN" env-required:"TELEGRAM_TOKEN"`
+	SendGridKey   string `env:"SENDGRID_KEY" env-required:"SENDGRID_KEY"`
+	StoreURL      string `env:"STORE_URL" env-required:"STORE_URL"`
+	HashKey       string `env:"HASH_KEY" env-required:"HASH_KEY"`
+	Errors        Errors
+	Responses     Responses
 }
 
 type Errors struct {
-	StartTrue    string `mapstructure:"start_true"`
-	HelpTrue     string `mapstructure:"help_true"`
-	SizeLetter   string `mapstructure:"size_letter"`
-	InvalidEmail string `mapstructure:"invalid_email"`
-	InvalidDate  string `mapstructure:"invalid_date"`
+	StartTrue    string `toml:"StartTrue"`
+	HelpTrue     string `toml:"HelpTrue"`
+	SizeLetter   string `toml:"SizeLetter"`
+	InvalidEmail string `toml:"InvalidEmail"`
+	InvalidDate  string `toml:"InvalidDate"`
 }
 
 type Responses struct {
-	Start    string `mapstructure:"start"`
-	HelpText string `mapstructure:"help_text"`
-	Goletter string `mapstructure:"goletter"`
-	Email    string `mapstructure:"email"`
-	Date     string `mapstructure:"date"`
-	Result   string `mapstructure:"result"`
+	Start    string `toml:"Start"`
+	HelpText string `toml:"HelpText"`
+	Goletter string `toml:"Goletter"`
+	Email    string `toml:"Email"`
+	Date     string `toml:"Date"`
+	Result   string `toml:"Result"`
 }
 
-func Init() (*Config, error) {
+func New(path string) (*Config, error) {
+	cfg := new(Config)
 
-	viper.AddConfigPath("configs")
-	viper.SetConfigName("main")
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+	if err := cleanenv.ReadConfig(path, cfg); err != nil {
+		return nil, fmt.Errorf("reading config from %s: %w", path, err)
 	}
 
-	var cfg Config
-	if err := viper.Unmarshal(&cfg); err != nil {
-		return nil, err
-	}
-	if err := viper.UnmarshalKey("messages.responses", &cfg.Messages.Responses); err != nil {
-		return nil, err
-	}
-	if err := viper.UnmarshalKey("messages.errors", &cfg.Messages.Errors); err != nil {
-		return nil, err
-	}
-
-	if err := parseEnv(&cfg); err != nil {
-		return nil, err
-	}
-	return &cfg, nil
-}
-
-func parseEnv(cfg *Config) error {
-
-	if err := viper.BindEnv("telegram_token"); err != nil {
-		return err
-	}
-	cfg.TelegramToken = viper.GetString("telegram_token")
-
-	if err := viper.BindEnv("sendgrid_api_key"); err != nil {
-		return err
-	}
-	cfg.SendGridKey = viper.GetString("sendgrid_api_key")
-
-	if err := viper.BindEnv("store_url"); err != nil {
-		return err
-	}
-	cfg.StoreURL = viper.GetString("store_url")
-
-	if err := viper.BindEnv("hash_key"); err != nil {
-		return err
-	}
-	cfg.HashKey = viper.GetString("hash_key")
-
-	return nil
+	return cfg, nil
 }
