@@ -1,2 +1,0 @@
-time="2023-04-21T04:27:24+03:00" level=info msg="Db opened" package=store
-time="2023-04-21T04:27:24+03:00" level=info msg="Bot has been started!" package=apiServer
