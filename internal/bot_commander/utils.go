@@ -13,7 +13,7 @@ const (
 	toConstraint   = "2025-03-28"
 )
 
-var ErrNotValidEmailOrDate = errors.New("not valid emailSender")
+var ErrNotValidEmailOrDate = errors.New("not valid email or date")
 
 func ValidateMessage(message string) (Letter, error) {
 	s := strings.Split(message, ";")

@@ -6,10 +6,13 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+// env-required:"SENDGRID_KEY"
+// env-required:"TELEGRAM_TOKEN
+// env-required:"SENDGRID_ADDRESS
 type Config struct {
-	TelegramToken   string `env:"TELEGRAM_TOKEN" env-required:"TELEGRAM_TOKEN"`
-	SendGridKey     string `env:"SENDGRID_KEY" env-required:"SENDGRID_KEY"`
-	SendGridAddress string `env:"SENDGRID_ADDRESS" env-required:"SENDGRID_ADDRESS"`
+	TelegramToken   string `env:"TELEGRAM_TOKEN"`
+	SendGridKey     string `env:"SENDGRID_KEY"`
+	SendGridAddress string `env:"SENDGRID_ADDRESS"`
 	LetterName      string `toml:"LetterName"`
 	Errors          Errors
 	Responses       Responses

@@ -1,6 +1,7 @@
 package bot_commander
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -14,19 +15,25 @@ type BotCommander struct {
 	logger      *logrus.Logger
 	tg          *tgbotapi.BotAPI
 	emailSender EmailSender
+	repo        Repository
 	userInfo    mapwmutex.MapWmutex[int64, []Letter]
 	userState   mapwmutex.MapWmutex[int64, bool]
-	dateIndex   mapwmutex.MapWmutex[string, int64]
+	dateIndex   mapwmutex.MapWmutex[string, []int64]
 }
 
 type EmailSender interface {
 	SendEmail(email, letter string) error
 }
 
+type Repository interface {
+	InsertLetter() error
+}
+
 type Letter struct {
-	message string
-	Email   string
-	date    string
+	message  string
+	Email    string
+	date     string
+	isActual bool
 }
 
 var numericKeyboard = tgbotapi.NewReplyKeyboard(
@@ -36,11 +43,12 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 	),
 )
 
-func New(options ...Option) *BotCommander {
+func New(repo Repository, options ...Option) *BotCommander {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
 		userInfo:  *mapwmutex.NewMapWmutex[int64, []Letter](0),
-		dateIndex: *mapwmutex.NewMapWmutex[string, int64](0),
+		dateIndex: *mapwmutex.NewMapWmutex[string, []int64](0),
+		repo:      repo,
 	}
 
 	for _, o := range options {
@@ -52,12 +60,20 @@ func New(options ...Option) *BotCommander {
 	return b
 }
 
-func (b *BotCommander) Start() error {
+func (b *BotCommander) Start(ctx context.Context) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := b.tg.GetUpdatesChan(u)
-
+	//
+	//go func() {
+	//	for {
+	//		select {
+	//		case <-ctx.Done():
+	//			return
+	//		default:
+	//
+	//		}
 	for update := range updates {
 		if update.Message == nil {
 			continue
@@ -67,6 +83,8 @@ func (b *BotCommander) Start() error {
 			log.Fatal(err)
 		}
 	}
+	//	}
+	//}()
 
 	return nil
 }
@@ -106,7 +124,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, message string) error
 	case "send the letter":
 		b.userState.Store(userId, true)
 
-		msg.Text = "send me the emailSender, date and letter"
+		msg.Text = "send me the email, date and letter"
 
 		if _, err := b.tg.Send(msg); err != nil {
 			log.Panic(err)
@@ -127,11 +145,14 @@ func (b *BotCommander) handleCommand(userId, chatId int64, message string) error
 		if state := b.userState.Load(userId); state {
 			letter, err := ValidateMessage(message)
 			if err == nil {
-				d := b.userInfo.Load(userId)
-				d = append(d, Letter{Email: message})
+				userData := b.userInfo.Load(userId)
+				userData = append(userData, Letter{Email: message, isActual: true})
 
-				b.dateIndex.Store(letter.date, userId)
-				b.userInfo.Store(userId, d)
+				userIdsByDate := b.dateIndex.Load(letter.date)
+				userIdsByDate = append(userIdsByDate, userId)
+
+				b.userInfo.Store(userId, userData)
+				b.dateIndex.Store(letter.date, userIdsByDate)
 
 				if _, err = b.tg.Send(msg); err != nil {
 					log.Panic(err)
@@ -141,7 +162,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, message string) error
 
 				break
 			} else if errors.Is(err, ErrNotValidEmailOrDate) {
-				msg.Text = "invalid emailSender or date"
+				msg.Text = "invalid email or date"
 
 				if _, err = b.tg.Send(msg); err != nil {
 					log.Panic(err)
@@ -162,3 +183,11 @@ func (b *BotCommander) handleCommand(userId, chatId int64, message string) error
 
 	return nil
 }
+
+//func (b *BotCommander) CheckForActualDate() error {
+//	currentTime := time.Now()
+//
+//	formattedDate := currentTime.Format("2006-01-02")
+//
+//	return nil
+//}

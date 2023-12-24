@@ -9,6 +9,13 @@ type MapWmutex[Hash comparable, Value any] struct {
 	m    *sync.RWMutex
 }
 
+func NewMapWmutex[Hash comparable, Value any](len int) *MapWmutex[Hash, Value] {
+	return &MapWmutex[Hash, Value]{
+		data: make(map[Hash]Value, len),
+		m:    new(sync.RWMutex),
+	}
+}
+
 func (mWm *MapWmutex[Hash, Value]) Store(key Hash, val Value) {
 	mWm.m.Lock()
 	mWm.data[key] = val
@@ -62,11 +69,4 @@ func (mWm *MapWmutex[Hash, Value]) GetData() map[Hash]Value {
 	mWm.m.RUnlock()
 
 	return copyMap
-}
-
-func NewMapWmutex[Hash comparable, Value any](len int) *MapWmutex[Hash, Value] {
-	return &MapWmutex[Hash, Value]{
-		data: make(map[Hash]Value, len),
-		m:    new(sync.RWMutex),
-	}
 }

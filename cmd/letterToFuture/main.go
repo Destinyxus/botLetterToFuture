@@ -1,11 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/Destinyxus/botLetterToFuture/internal/config"
+	"github.com/Destinyxus/botLetterToFuture/internal/storage"
+	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
 )
 
 func main() {
@@ -18,9 +24,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	botCommander := commander.New(commander.WithLogger(), commander.WithTgAPI(cfg.TelegramToken), commander.WithEmailSender(cfg.SendGridKey, cfg.LetterName, cfg.SendGridAddress))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	if err = botCommander.Start(); err != nil {
+	conn, err := postgresconn.New(ctx, "")
+	if err != nil {
 		log.Fatal(err)
 	}
+
+	st := storage.New(conn)
+
+	botCommander := commander.New(st, commander.WithLogger(), commander.WithTgAPI(cfg.TelegramToken), commander.WithEmailSender(cfg.SendGridKey, cfg.LetterName, cfg.SendGridAddress))
+
+	if err = botCommander.Start(ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	<-ctx.Done()
 }
