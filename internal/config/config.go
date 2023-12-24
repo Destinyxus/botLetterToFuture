@@ -7,29 +7,22 @@ import (
 )
 
 type Config struct {
-	//TelegramToken string `env:"TELEGRAM_TOKEN" env-required:"TELEGRAM_TOKEN"`
-	//SendGridKey string `env:"SENDGRID_KEY" env-required:"SENDGRID_KEY"`
-	//StoreURL    string `env:"STORE_URL" env-required:"STORE_URL"`
-	//HashKey     string `env:"HASH_KEY" env-required:"HASH_KEY"`
-	Errors    Errors
-	Responses Responses
+	TelegramToken   string `env:"TELEGRAM_TOKEN" env-required:"TELEGRAM_TOKEN"`
+	SendGridKey     string `env:"SENDGRID_KEY" env-required:"SENDGRID_KEY"`
+	SendGridAddress string `env:"SENDGRID_ADDRESS" env-required:"SENDGRID_ADDRESS"`
+	LetterName      string `toml:"LetterName"`
+	Errors          Errors
+	Responses       Responses
 }
 
 type Errors struct {
-	StartTrue    string `toml:"StartTrue"`
-	HelpTrue     string `toml:"HelpTrue"`
-	SizeLetter   string `toml:"SizeLetter"`
-	InvalidEmail string `toml:"InvalidEmail"`
-	InvalidDate  string `toml:"InvalidDate"`
+	SizeLetter           string `toml:"SizeLetter"`
+	InvalidFormatMessage string `toml:"InvalidFormatMessage"`
 }
 
 type Responses struct {
-	Start    string `toml:"Start"`
-	HelpText string `toml:"HelpText"`
-	Goletter string `toml:"Goletter"`
-	Email    string `toml:"Email"`
-	Date     string `toml:"Date"`
-	Result   string `toml:"Result"`
+	AboutDescription string `toml:"AboutDescription"`
+	Result           string `toml:"Result"`
 }
 
 func New(path string) (*Config, error) {

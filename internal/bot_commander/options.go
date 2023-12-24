@@ -3,6 +3,7 @@ package bot_commander
 import (
 	"log"
 
+	"github.com/Destinyxus/botLetterToFuture/internal/emailSender"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -23,9 +24,9 @@ func WithLogger() Option {
 	}
 }
 
-func WithTgAPI() Option {
+func WithTgAPI(token string) Option {
 	return func(bot *BotCommander) error {
-		b, err := tgbotapi.NewBotAPI("5982458978:AAHPIJjXWs4-Nu3JTnmlxtjQ8Yya90kZnNk")
+		b, err := tgbotapi.NewBotAPI(token)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -33,6 +34,16 @@ func WithTgAPI() Option {
 		b.Debug = true
 
 		bot.tg = b
+
+		return nil
+	}
+}
+
+func WithEmailSender(token string, mailName string, address string) Option {
+	return func(bot *BotCommander) error {
+		em := emailSender.NewEmail(token, mailName, address)
+
+		bot.emailSender = em
 
 		return nil
 	}
