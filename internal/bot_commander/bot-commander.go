@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/Destinyxus/botLetterToFuture/internal/mapwmutex"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -43,12 +44,14 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 	),
 )
 
-func New(repo Repository, options ...Option) *BotCommander {
+func New(
+	//repo Repository,
+	options ...Option) *BotCommander {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
 		userInfo:  *mapwmutex.NewMapWmutex[int64, []Letter](0),
 		dateIndex: *mapwmutex.NewMapWmutex[string, []int64](0),
-		repo:      repo,
+		//repo:      repo,
 	}
 
 	for _, o := range options {
@@ -60,31 +63,45 @@ func New(repo Repository, options ...Option) *BotCommander {
 	return b
 }
 
-func (b *BotCommander) Start(ctx context.Context) error {
+func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := b.tg.GetUpdatesChan(u)
-	//
-	//go func() {
-	//	for {
-	//		select {
-	//		case <-ctx.Done():
-	//			return
-	//		default:
-	//
-	//		}
-	for update := range updates {
-		if update.Message == nil {
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		for update := range updates {
+			select {
+			case <-ctx.Done():
+				b.logger.Info("finishing app")
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+				msg.Text = "sorry, some unexpected error, i am going to sleep"
+
+				if _, err := b.tg.Send(msg); err != nil {
+					log.Panic(err)
+				}
+
+				return
+			default:
+
+			}
+
+			if update.Message == nil {
+				continue
+			}
+
+			if err := b.handleCommand(update.Message.From.ID, update.Message.Chat.ID, update.Message.Text); err != nil {
+				log.Fatal(err)
+			}
+
 			continue
 		}
-
-		if err := b.handleCommand(update.Message.From.ID, update.Message.Chat.ID, update.Message.Text); err != nil {
-			log.Fatal(err)
-		}
-	}
-	//	}
-	//}()
+	}()
 
 	return nil
 }

@@ -1,0 +1,39 @@
+version: '3.1'
+
+services:
+  telegram-bot:
+    build: ./
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - STORE_URL=${STORE_URL}
+      - POSTGRES_ADDRESS=${POSTGRES_ADDRESS}
+    networks:
+      - mynet
+  db:
+    image: postgres
+    ports:
+      - "5433:5432"
+    restart: always
+    environment:
+       - POSTGRES_DB=${POSTGRES_DB}
+       - POSTGRES_USER=${POSTGRES_USER}
+       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - mynet
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+networks:
+  mynet:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+
