@@ -10,9 +10,10 @@ services:
       - db
     environment:
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_KEY=${SENDGRID_KEY}
       - STORE_URL=${STORE_URL}
       - POSTGRES_ADDRESS=${POSTGRES_ADDRESS}
+      - SENDGRID_ADDRESS=${SENDGRID_ADDRESS}
     networks:
       - mynet
   db:

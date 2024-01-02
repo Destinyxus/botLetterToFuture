@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/Destinyxus/botLetterToFuture/internal/storage"
+	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
 	"log"
 	"os/signal"
 	"sync"
@@ -26,15 +28,18 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	defer cancel()
 
-	//conn, err := postgresconn.New(ctx, cfg.PostgresAddress)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//st := storage.New(conn)
+	conn, err := postgresconn.New(ctx, cfg.PostgresAddress)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	st, err := storage.New(conn)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	botCommander := commander.New(
-		//st,
+		st,
 		commander.WithLogger(), commander.WithTgAPI(cfg.TelegramToken), commander.WithEmailSender(cfg.SendGridKey, cfg.LetterName, cfg.SendGridAddress))
 
 	var wg sync.WaitGroup

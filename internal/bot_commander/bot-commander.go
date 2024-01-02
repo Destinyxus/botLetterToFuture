@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"sync"
-
 	"github.com/Destinyxus/botLetterToFuture/internal/mapwmutex"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sirupsen/logrus"
+	"log"
+	"sync"
 )
 
 type BotCommander struct {
@@ -27,7 +26,7 @@ type EmailSender interface {
 }
 
 type Repository interface {
-	InsertLetter() error
+	InsertLetter(letter, email, date string) error
 }
 
 type Letter struct {
@@ -45,13 +44,12 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 )
 
 func New(
-	//repo Repository,
+	repo Repository,
 	options ...Option) *BotCommander {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
-		userInfo:  *mapwmutex.NewMapWmutex[int64, []Letter](0),
 		dateIndex: *mapwmutex.NewMapWmutex[string, []int64](0),
-		//repo:      repo,
+		repo:      repo,
 	}
 
 	for _, o := range options {
@@ -162,14 +160,9 @@ func (b *BotCommander) handleCommand(userId, chatId int64, message string) error
 		if state := b.userState.Load(userId); state {
 			letter, err := ValidateMessage(message)
 			if err == nil {
-				userData := b.userInfo.Load(userId)
-				userData = append(userData, Letter{Email: message, isActual: true})
-
-				userIdsByDate := b.dateIndex.Load(letter.date)
-				userIdsByDate = append(userIdsByDate, userId)
-
-				b.userInfo.Store(userId, userData)
-				b.dateIndex.Store(letter.date, userIdsByDate)
+				if err = b.repo.InsertLetter(letter.message, letter.Email, letter.date); err != nil {
+					log.Fatal(err)
+				}
 
 				if _, err = b.tg.Send(msg); err != nil {
 					log.Panic(err)

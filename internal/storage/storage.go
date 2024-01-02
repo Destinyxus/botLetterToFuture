@@ -14,21 +14,19 @@ func New(conn *pgx.Conn) (*Storage, error) {
 		conn: conn,
 	}
 
-	query := `CREATE TABLE IF NOT EXISTS letters (
-    id SERIAL PRIMARY KEY,
-    letter TEXT NOT NULL,
-    letter_date TIMESTAMP NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    isActual BOOLEAN NOT NULL
-)`
-
-	if _, err := st.conn.Exec(context.Background(), query); err != nil {
-		return st, err
-	}
-
 	return st, nil
 }
 
-func (s *Storage) InsertLetter() error {
+func (s *Storage) InsertLetter(letter, email, date string) error {
+	query := `INSERT INTO letters(letter,email,date,isActual)
+			  values ($1,$2,$3,$4)`
+
+	_, err := s.conn.Exec(context.Background(), query, letter, email, date, true)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
+
+//func (s *Storage) GetLetter

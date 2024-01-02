@@ -26,7 +26,7 @@ func ValidateMessage(message string) (Letter, error) {
 	email := s[1]
 	date := s[2]
 
-	if !ValidateEmail(email) && !DateValidation(date) {
+	if !ValidateEmail(email) || !DateValidation(date) {
 		return Letter{}, ErrNotValidEmailOrDate
 	}
 
@@ -39,8 +39,8 @@ func ValidateEmail(email string) bool {
 	return err == nil
 }
 
-func DateValidation(s string) bool {
-	date, err := time.Parse(dateFormat, s)
+func DateValidation(datee string) bool {
+	date, err := time.Parse(dateFormat, datee)
 	if err != nil {
 		return false
 	}
