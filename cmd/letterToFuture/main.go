@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/Destinyxus/botLetterToFuture/internal/config"
@@ -28,7 +29,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	defer cancel()
 
-	conn, err := postgresconn.New(ctx, cfg.PostgresAddress)
+	conn, err := postgresconn.New(*cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -40,7 +41,11 @@ func main() {
 
 	botCommander := commander.New(
 		st,
-		commander.WithLogger(), commander.WithTgAPI(cfg.TelegramToken), commander.WithEmailSender(cfg.SendGridKey, cfg.LetterName, cfg.SendGridAddress))
+		*cfg,
+		commander.WithLogger(),
+		commander.WithTgAPI(cfg.TelegramToken),
+		commander.WithEmailSender(cfg.EmailSender.EmailToken, cfg.EmailSender.ClientEmail, cfg.EmailSender.HostEmail, cfg.EmailSender.SMTPAddress),
+	)
 
 	var wg sync.WaitGroup
 
@@ -48,7 +53,24 @@ func main() {
 		log.Fatal(err)
 	}
 
-	wg.Wait()
+	ticker := time.NewTicker(time.Minute)
 
-	fmt.Println("graceful shutdown")
+loop:
+	for {
+		select {
+		case <-ticker.C:
+			if err = botCommander.CheckForActualDate(); err != nil {
+				log.Fatal(err)
+			}
+
+			ticker.Reset(time.Minute)
+
+		case <-ctx.Done():
+			fmt.Println("graceful shutdown")
+
+			break loop
+		}
+	}
+
+	wg.Wait()
 }

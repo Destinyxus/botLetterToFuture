@@ -39,9 +39,9 @@ func WithTgAPI(token string) Option {
 	}
 }
 
-func WithEmailSender(token string, mailName string, address string) Option {
+func WithEmailSender(token string, clientEmail string, host, smtpAddr string) Option {
 	return func(bot *BotCommander) error {
-		em := emailSender.NewEmail(token, mailName, address)
+		em := emailSender.New(token, clientEmail, host, smtpAddr)
 
 		bot.emailSender = em
 

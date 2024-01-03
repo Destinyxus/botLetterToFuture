@@ -1,33 +1,31 @@
 package emailSender
 
 import (
-	"fmt"
-
-	"github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"net/smtp"
 )
 
-type Email struct {
-	client    *sendgrid.Client
-	emailFrom *mail.Email
+type EmailClient struct {
+	auth        smtp.Auth
+	clientEmail string
+	smtpAddr    string
 }
 
-func NewEmail(token, mailName, address string) *Email {
-	return &Email{
-		client:    sendgrid.NewSendClient(token),
-		emailFrom: mail.NewEmail(mailName, address),
+func New(token, clientEmail, host, smtpAddr string) *EmailClient {
+	return &EmailClient{
+		auth:        smtp.PlainAuth("", clientEmail, token, host),
+		clientEmail: clientEmail,
+		smtpAddr:    smtpAddr,
 	}
 }
 
-func (s *Email) SendEmail(email, letter string) error {
-	subject := "Письмо из прошлого"
-	to := mail.NewEmail("", email)
+func (s *EmailClient) SendEmail(email, letter string) error {
+	if err := smtp.SendMail(s.smtpAddr,
+		s.auth,
+		s.clientEmail,
+		[]string{email},
+		[]byte(letter)); err != nil {
 
-	message := mail.NewSingleEmail(s.emailFrom, subject, to, "", letter)
-
-	_, err := s.client.Send(message)
-	if err != nil {
-		return fmt.Errorf("sending mail to client: %w", err)
+		return err
 	}
 
 	return nil
