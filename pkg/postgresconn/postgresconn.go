@@ -32,7 +32,7 @@ func New(cfg config.Config) (*sqlx.DB, error) {
 				  id serial PRIMARY KEY,
    				  letter text not null,
     			  email varchar(255),
-   				  date varchar,
+   				  date timestamp,
     			  isActual bool
 				)`
 
