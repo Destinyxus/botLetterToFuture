@@ -1,16 +1,18 @@
-FROM golang
+FROM golang:1.21.5-alpine3.19
 
-RUN go version
+ENV TZ=Europe/Moscow
 
-WORKDIR /bot
+RUN apk add tzdata
+RUN cp /usr/share/zoneinfo/Europe/Moscow  /etc/localtime
+RUN echo "Europe/Moscow" >  /etc/timezone
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
 
 COPY . .
 
-RUN go mod download
+RUN go build ./cmd/letterToFuture
 
-RUN go build -o telegramBot ./cmd/letterToFuture/main.go
-
-EXPOSE 80
-
-CMD ["./telegramBot"]
-
+CMD ["/app/letterToFuture"]

@@ -1,0 +1,10 @@
+[Responses]
+AboutDescription =  "I send letters to the future. How it works? You send me a letter that you want to receive on some specific date in the future. Then, you will be given the opportunity to indicate your email to which you would like to receive the same message. Keep in mind that after the process of sending my letter, I will delete it from the chat in order to maintain the intrigue and give your brain the opportunity to forget about it! You leave a hundred dollars in your winter jacket and happily forget about them, and after a season you put it on and wow, wow - you feel those same dollars and rejoice! The principle is similar here). To start, call the /start or /open command."
+Result = "Thank you! Your letter, mail and date will be deleted from the chat in a couple of seconds! Please keep in mind that your message may end up in spam, so to avoid this misunderstanding, it is recommended to add the following mail to your favorites in your mailbox - lettertofuturebot@gmail.com. If you want to send another letter to the future, /open menu. Good luck!"
+StopCommand = "Stopping the Letter creation. If you want to start again just /open the menu"
+SendLetter = "Okay, now please send me your letter with email and date you want to receive it in future. The message format should be like this: `letter;example@gmail.com;2024-11-11 (year-month-day)`. If you want to send the letter again, just /open the menu"
+
+[Errors]
+SizeLetter = "Sorry, I can't save such a long letter. Cut it short and try again!"
+InvalidFormatMessage = "invalid Email or Date format, it should be like letter;example@gmail.com;2024-11-11 (year-month-day)!"
+NotValidCommand = "Sorry, i dont understand you;( Everything i can do you can find in menu - /open it"

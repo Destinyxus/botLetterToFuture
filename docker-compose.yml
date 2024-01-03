@@ -1,28 +1,45 @@
-  version: '3.8'
+version: '3.1'
 
-  services:
-      telegram-bot:
-        build: ./
-        command: ./telegramBot
-        ports:
-          - "8080:8080"
-        depends_on:
-          - db
-        environment:
-            - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
-            - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-            - STORE_URL=${STORE_URL}
-            - HASH_KEY=${HASH_KEY}
-        env_file:
-          - .env
+services:
+  telegram-bot:
+    build: ./
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - EMAIL_TOKEN=${EMAIL_TOKEN}
+      - CLIENT_EMAIL=${CLIENT_EMAIL}
+      - HOST_EMAIL=${HOST_EMAIL}
+      - SMTP=${SMTP}
+    networks:
+      - mynet
+  db:
+    image: postgres
+    ports:
+      - "5433:5432"
+    restart: always
+    environment:
+       - POSTGRES_DB=${DB_NAME}
+       - POSTGRES_USER=${DB_USER}
+       - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - mynet
+    volumes:
+      - db_data:/var/lib/postgresql/data
 
+networks:
+  mynet:
+    driver: bridge
 
-      db:
-        restart: always
-        image: postgres:latest
-        volumes:
-          - ./.database/postgres/data:/var/lib/postgresql/data
-        environment:
-         - STORE_URL=${STORE_URL}
-        ports:
-          - "5432:5432"
+volumes:
+  db_data:
+    driver: local
+
