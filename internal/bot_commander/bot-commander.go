@@ -33,10 +33,10 @@ type Repository interface {
 }
 
 type Letter struct {
-	Date     time.Time `db:"date"`
+	Id       int       `db:"id"`
 	Letter   string    `db:"letter"`
 	Email    string    `db:"email"`
-	Id       int       `db:"id"`
+	Date     time.Time `db:"date"`
 	IsActual bool      `db:"isactual"`
 }
 
