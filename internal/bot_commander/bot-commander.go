@@ -121,6 +121,8 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending keyboard message: %v", err)
 		}
+
+		break
 	case "/open":
 		b.userState.Store(userId, false)
 		msg.ReplyMarkup = numericKeyboard
@@ -128,6 +130,8 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending keyboard message: %v", err)
 		}
+
+		break
 	case "/about me":
 		b.userState.Store(userId, false)
 
@@ -136,6 +140,8 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending about me info: %v", err)
 		}
+
+		break
 	case "send the Letter":
 		b.userState.Store(userId, true)
 
@@ -144,6 +150,8 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending the offer to send message: %v", err)
 		}
+
+		break
 	case "/stop":
 		b.userState.Store(userId, false)
 
@@ -152,6 +160,8 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending the stop info: %v", err)
 		}
+
+		break
 	default:
 		if state := b.userState.Load(userId); state {
 			letter, err := ValidateMessage(message)
