@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/Destinyxus/botLetterToFuture/internal/storage"
@@ -39,13 +40,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	botCommander := commander.New(
+	botCommander, err := commander.New(
 		st,
 		*cfg,
 		commander.WithLogger(),
 		commander.WithTgAPI(cfg.TelegramToken),
 		commander.WithEmailSender(cfg.EmailSender.EmailToken, cfg.EmailSender.ClientEmail, cfg.EmailSender.HostEmail, cfg.EmailSender.SMTPAddress),
 	)
+	if errors.Is(err, commander.DateIndexesError) {
+		log.Fatal(err)
+	}
 
 	var wg sync.WaitGroup
 

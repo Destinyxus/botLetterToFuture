@@ -30,6 +30,7 @@ type EmailSender interface {
 type Repository interface {
 	InsertLetter(letter, email string, date time.Time) error
 	GetLetter(date time.Time) ([]Letter, error)
+	GetActualDates() (map[time.Time]struct{}, error)
 }
 
 type Letter struct {
@@ -47,10 +48,13 @@ var numericKeyboard = tgbotapi.NewReplyKeyboard(
 	),
 )
 
+var DateIndexesError = errors.New("date indexes err")
+
 func New(
 	repo Repository,
 	cfg config.Config,
-	options ...Option) *BotCommander {
+	options ...Option,
+) (*BotCommander, error) {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
 		dateIndex: make(map[time.Time]struct{}),
@@ -64,7 +68,11 @@ func New(
 		}
 	}
 
-	return b
+	if err := b.DatesDump(); err != nil {
+		return &BotCommander{}, DateIndexesError
+	}
+
+	return b, nil
 }
 
 func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
@@ -78,29 +86,27 @@ func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	go func() {
 		defer wg.Done()
 
+		<-ctx.Done()
+		b.tg.StopReceivingUpdates()
+	}()
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
 		for update := range updates {
-			select {
-			case <-ctx.Done():
-				b.logger.Info("finishing app")
-
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-				msg.Text = "sorry, some unexpected error, i am going to sleep"
-
-				if _, err := b.tg.Send(msg); err != nil {
-					log.Panic(err)
-				}
-
-				return
-			default:
-
-			}
-
 			if update.Message == nil {
 				continue
 			}
 
-			if err := b.handleCommand(update.Message.From.ID, update.Message.Chat.ID, update.Message.MessageID, update.Message.Text); err != nil {
-				log.Fatal(err)
+			if err := b.handleCommand(
+				update.Message.From.ID,
+				update.Message.Chat.ID,
+				update.Message.MessageID,
+				update.Message.Text); err != nil {
+
+				b.logger.Debug("error while handling command")
 			}
 
 			continue
@@ -121,8 +127,6 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending keyboard message: %v", err)
 		}
-
-		break
 	case "/open":
 		b.userState.Store(userId, false)
 		msg.ReplyMarkup = numericKeyboard
@@ -130,8 +134,6 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending keyboard message: %v", err)
 		}
-
-		break
 	case "/about me":
 		b.userState.Store(userId, false)
 
@@ -140,8 +142,6 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending about me info: %v", err)
 		}
-
-		break
 	case "send the Letter":
 		b.userState.Store(userId, true)
 
@@ -150,8 +150,6 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending the offer to send message: %v", err)
 		}
-
-		break
 	case "/stop":
 		b.userState.Store(userId, false)
 
@@ -160,52 +158,48 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		if _, err := b.tg.Send(msg); err != nil {
 			b.logger.Debugf("sending the stop info: %v", err)
 		}
-
-		break
 	default:
-		if state := b.userState.Load(userId); state {
-			letter, err := ValidateMessage(message)
-			if err == nil {
-				if err = b.repo.InsertLetter(letter.Letter, letter.Email, letter.Date); err != nil {
-					log.Fatal(err)
-				}
-
-				b.dateIndex[letter.Date] = struct{}{}
-
-				b.userState.Store(userId, false)
-
-				msg.Text = b.cfg.Responses.Result
-
-				if _, err = b.tg.Send(msg); err != nil {
-					b.logger.Debugf("sending the success message: %v", err)
-				}
-
-				if _, err = b.tg.Send(tgbotapi.NewDeleteMessage(chatId, messageID)); err != nil {
-					b.logger.Debugf("deleting user's message: %v", err)
-				}
-
-				break
-			} else if errors.Is(err, ErrNotValidEmailOrDate) {
-				msg.Text = b.cfg.Errors.InvalidFormatMessage
-
-				if _, err = b.tg.Send(msg); err != nil {
-					b.logger.Debugf("sending the invalid message: %v", err)
-				}
-
-				break
-			}
-		} else {
-			msg.Text = b.cfg.Errors.NotValidCommand
-
-			if _, err := b.tg.Send(msg); err != nil {
-				b.logger.Debugf("sending the not valid command message: %v", err)
-			}
-
-			break
-		}
+		b.processMessage(userId, chatId, messageID, message, msg)
 	}
 
 	return nil
+}
+
+func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int, message string, msg tgbotapi.MessageConfig) {
+	if state := b.userState.Load(userId); state {
+		letter, err := ValidateMessage(message)
+		if err == nil {
+			if err = b.repo.InsertLetter(letter.Letter, letter.Email, letter.Date); err != nil {
+				log.Fatal(err)
+			}
+
+			b.dateIndex[letter.Date] = struct{}{}
+
+			b.userState.Store(userId, false)
+
+			msg.Text = b.cfg.Responses.Result
+
+			if _, err = b.tg.Send(msg); err != nil {
+				b.logger.Debugf("sending the success message: %v", err)
+			}
+
+			if _, err = b.tg.Send(tgbotapi.NewDeleteMessage(chatId, messageID)); err != nil {
+				b.logger.Debugf("deleting user's message: %v", err)
+			}
+		} else if errors.Is(err, ErrNotValidEmailOrDate) {
+			msg.Text = b.cfg.Errors.InvalidFormatMessage
+
+			if _, err = b.tg.Send(msg); err != nil {
+				b.logger.Debugf("sending the invalid message: %v", err)
+			}
+		}
+	} else {
+		msg.Text = b.cfg.Errors.NotValidCommand
+
+		if _, err := b.tg.Send(msg); err != nil {
+			b.logger.Debugf("sending the not valid command message: %v", err)
+		}
+	}
 }
 
 func (b *BotCommander) CheckForActualDate() error {
@@ -229,30 +223,18 @@ func (b *BotCommander) CheckForActualDate() error {
 		}
 
 		delete(b.dateIndex, currentDate)
-
-		return nil
 	}
 
-	t := time.Date(
-		0001,
-		1,
-		1,
-		00,
-		00,
-		00,
-		00,
-		time.UTC)
+	return nil
+}
 
-	letters, err := b.repo.GetLetter(t)
+func (b *BotCommander) DatesDump() error {
+	dates, err := b.repo.GetActualDates()
 	if err != nil {
 		return err
 	}
 
-	for _, letter := range letters {
-		if err = b.emailSender.SendEmail(letter.Email, letter.Letter); err != nil {
-			return err
-		}
-	}
+	b.dateIndex = dates
 
 	return nil
 }

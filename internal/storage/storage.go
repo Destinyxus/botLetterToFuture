@@ -86,3 +86,35 @@ func (s *Storage) getWithActualDate(query string) ([]bot_commander.Letter, error
 
 	return nil, nil
 }
+
+func (s *Storage) GetActualDates() (map[time.Time]struct{}, error) {
+	query := `SELECT DISTINCT date 
+			  FROM letters 
+			  WHERE date >= CURRENT_DATE`
+
+	rows, err := s.conn.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dates := make([]time.Time, 0)
+
+	for rows.Next() {
+		var date time.Time
+
+		if err = rows.Scan(&date); err != nil {
+			return nil, err
+		}
+
+		dates = append(dates, date)
+	}
+
+	dateIndexes := make(map[time.Time]struct{})
+
+	for _, d := range dates {
+		dateIndexes[d] = struct{}{}
+	}
+
+	return dateIndexes, nil
+}
