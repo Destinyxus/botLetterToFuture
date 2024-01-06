@@ -27,6 +27,8 @@ jobs:
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: destinyxus/futureletterbot
+          tags: |
+            type=raw,value=latest
       
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -35,3 +37,39 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    name: Deploy to Server
+    needs: push_to_registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Executing remote SSH commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /home/botLetterToFuture
+
+            echo "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}" > .env
+            echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+            echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+            echo "EMAIL_TOKEN=${{ secrets.EMAIL_TOKEN }}" >> .env
+            echo "CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }}" >> .env
+            echo "HOST_EMAIL=${{ secrets.HOST_EMAIL }}" >> .env
+            echo "SMTP=${{ secrets.SMTP }}" >> .env
+            echo "POSTGRES_DB=${{ secrets.DB_NAME }}" >> .env
+            echo "POSTGRES_USER=${{ secrets.DB_USER }}" >> .env
+            echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            
+            docker stop f384f59ccb0d
+            docker rm f384f59ccb0d
+            
+            docker pull
+            docker-compose up -d
+            
+            docker image prune -af

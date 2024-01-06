@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
   telegram-bot:
-    build: ./
+    image: destinyxus/futureletterbot:latest
     ports:
       - "8080:8080"
     restart: always
