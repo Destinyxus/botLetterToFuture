@@ -14,12 +14,12 @@ import (
 )
 
 type BotCommander struct {
-	emailSender EmailSender
-	repo        Repository
+	EmailSender EmailSender
+	Repo        Repository
 	userState   mapwmutex.MapWmutex[int64, bool]
 	logger      *logrus.Logger
 	tg          *tgbotapi.BotAPI
-	dateIndex   map[time.Time]struct{}
+	DateIndex   map[time.Time]struct{}
 	cfg         config.Config
 }
 
@@ -58,8 +58,8 @@ func New(
 ) (*BotCommander, error) {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
-		dateIndex: make(map[time.Time]struct{}),
-		repo:      repo,
+		DateIndex: make(map[time.Time]struct{}),
+		Repo:      repo,
 		cfg:       cfg,
 	}
 
@@ -170,11 +170,11 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 	if state := b.userState.Load(userId); state {
 		letter, err := ValidateMessage(message)
 		if err == nil {
-			if err = b.repo.InsertLetter(letter.Letter, letter.Email, letter.Date); err != nil {
+			if err = b.Repo.InsertLetter(letter.Letter, letter.Email, letter.Date); err != nil {
 				log.Fatal(err)
 			}
 
-			b.dateIndex[letter.Date] = struct{}{}
+			b.DateIndex[letter.Date] = struct{}{}
 
 			b.userState.Store(userId, false)
 
@@ -204,38 +204,38 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 }
 
 func (b *BotCommander) CheckForActualDate() error {
-	now := time.Now().Format(dateFormat)
+	now := time.Now().Format(DateFormat)
 
-	currentDate, err := time.Parse(dateFormat, now)
+	currentDate, err := time.Parse(DateFormat, now)
 	if err != nil {
 		return err
 	}
 
-	if _, actual := b.dateIndex[currentDate]; actual {
-		letters, err := b.repo.GetLetter(currentDate)
+	if _, actual := b.DateIndex[currentDate]; actual {
+		letters, err := b.Repo.GetLetter(currentDate)
 		if err != nil {
 			return err
 		}
 
 		for _, letter := range letters {
-			if err = b.emailSender.SendEmail(letter.Email, letter.Letter); err != nil {
+			if err = b.EmailSender.SendEmail(letter.Email, letter.Letter); err != nil {
 				return err
 			}
 		}
 
-		delete(b.dateIndex, currentDate)
+		delete(b.DateIndex, currentDate)
 	}
 
 	return nil
 }
 
 func (b *BotCommander) DatesDump() error {
-	dates, err := b.repo.GetActualDates()
+	dates, err := b.Repo.GetActualDates()
 	if err != nil {
 		return err
 	}
 
-	b.dateIndex = dates
+	b.DateIndex = dates
 
 	return nil
 }

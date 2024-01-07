@@ -43,7 +43,7 @@ func WithEmailSender(token string, clientEmail string, host, smtpAddr string) Op
 	return func(bot *BotCommander) error {
 		em := emailSender.New(token, clientEmail, host, smtpAddr)
 
-		bot.emailSender = em
+		bot.EmailSender = em
 
 		return nil
 	}
