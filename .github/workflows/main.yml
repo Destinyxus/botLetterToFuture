@@ -76,21 +76,19 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /home/envs
-
-            echo "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}" > .env
-            echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-            echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-            echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
-            echo "EMAIL_TOKEN=${{ secrets.EMAIL_TOKEN }}" >> .env
-            echo "CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }}" >> .env
-            echo "HOST_EMAIL=${{ secrets.HOST_EMAIL }}" >> .env
-            echo "SMTP=${{ secrets.SMTP }}" >> .env
-            echo "POSTGRES_DB=${{ secrets.DB_NAME }}" >> .env
-            echo "POSTGRES_USER=${{ secrets.DB_USER }}" >> .env
-            echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            export DB_PORT=${{ secrets.DB_PORT }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME=${{ secrets.DB_NAME }}
+            export TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
+            export DB_HOST=${{ secrets.DB_HOST }}
+            export EMAIL_TOKEN=${{ secrets.EMAIL_TOKEN }}
+            export CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }}
+            export HOST_EMAIL=${{ secrets.HOST_EMAIL }}
+            export SMTP=${{ secrets.SMTP }}
+            export POSTGRES_DB=${{ secrets.DB_NAME }}
+            export POSTGRES_USER=${{ secrets.DB_USER }}
+            export POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
             
             docker pull destinyxus/futureletterbot:latest
             
