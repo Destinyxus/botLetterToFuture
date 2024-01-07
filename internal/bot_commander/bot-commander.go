@@ -23,7 +23,6 @@ type BotCommander struct {
 	cfg         config.Config
 }
 
-// test
 type EmailSender interface {
 	SendEmail(email, letter string) error
 }
