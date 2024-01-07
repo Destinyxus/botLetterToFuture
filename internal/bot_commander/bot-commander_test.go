@@ -1,6 +1,7 @@
 package bot_commander_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -11,19 +12,22 @@ import (
 )
 
 func TestBotCommander_CheckForActualDate(t *testing.T) {
-	dateExample := time.Now()
+	currentDateFormatted := bot_commander.FormatTime(time.Now())
 
 	testTable := []struct {
 		name                  string
 		configureDateIndex    func() map[time.Time]struct{}
-		configureMockBehavior func(repo *mocks.MockRepository, sndr *mocks.MockEmailSender)
-		expectedError         error
+		configureMockBehavior func(
+			repo *mocks.MockRepository,
+			sndr *mocks.MockEmailSender,
+		)
+		expectedError error
 	}{
 		{
 			name: "everything ok",
 			configureDateIndex: func() map[time.Time]struct{} {
 				m := make(map[time.Time]struct{})
-				m[dateExample] = struct{}{}
+				m[currentDateFormatted] = struct{}{}
 
 				return m
 			},
@@ -31,10 +35,78 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 				repo *mocks.MockRepository,
 				sndr *mocks.MockEmailSender,
 			) {
-				repo.EXPECT().GetLetter(dateExample).Return(
+				repo.EXPECT().GetLetter(currentDateFormatted).Return(
 					[]bot_commander.Letter{
 						{
-							Date:   dateExample,
+							Date:   currentDateFormatted,
+							Email:  "foo@gmail.com",
+							Letter: "hii",
+						},
+						{
+							Date:   currentDateFormatted,
+							Email:  "hey@gmail.com",
+							Letter: "lol",
+						},
+					},
+					nil,
+				).Times(1)
+
+				sndr.EXPECT().SendEmail("foo@gmail.com", "hii").Return(nil).Times(1)
+				sndr.EXPECT().SendEmail("hey@gmail.com", "lol").Return(nil).Times(1)
+			},
+			expectedError: nil,
+		},
+		{
+			name: "no emails on this date",
+			configureDateIndex: func() map[time.Time]struct{} {
+				return make(map[time.Time]struct{})
+			},
+			configureMockBehavior: func(
+				repo *mocks.MockRepository,
+				sndr *mocks.MockEmailSender,
+			) {
+				repo.EXPECT().GetLetter("foo").Times(0)
+
+				sndr.EXPECT().SendEmail("foo", "foo").Times(0)
+			},
+			expectedError: nil,
+		},
+		{
+			name: "get letter error",
+			configureDateIndex: func() map[time.Time]struct{} {
+				m := make(map[time.Time]struct{})
+				m[currentDateFormatted] = struct{}{}
+
+				return m
+			},
+			configureMockBehavior: func(
+				repo *mocks.MockRepository,
+				sndr *mocks.MockEmailSender,
+			) {
+				repo.EXPECT().GetLetter(currentDateFormatted).
+					Return([]bot_commander.Letter{}, errors.New("db err")).
+					Times(1)
+
+				sndr.EXPECT().SendEmail("foo", "foo").Times(0)
+			},
+			expectedError: errors.New("db err"),
+		},
+		{
+			name: "send email error",
+			configureDateIndex: func() map[time.Time]struct{} {
+				m := make(map[time.Time]struct{})
+				m[currentDateFormatted] = struct{}{}
+
+				return m
+			},
+			configureMockBehavior: func(
+				repo *mocks.MockRepository,
+				sndr *mocks.MockEmailSender,
+			) {
+				repo.EXPECT().GetLetter(currentDateFormatted).Return(
+					[]bot_commander.Letter{
+						{
+							Date:   currentDateFormatted,
 							Email:  "foo@gmail.com",
 							Letter: "hii",
 						},
@@ -42,9 +114,11 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 					nil,
 				).Times(1)
 
-				sndr.EXPECT().SendEmail("foo@gmail.com", "hii").Return(nil).Times(1)
+				sndr.EXPECT().SendEmail("foo@gmail.com", "hii").
+					Return(errors.New("email sender error")).
+					Times(1)
 			},
-			expectedError: nil,
+			expectedError: errors.New("email sender error"),
 		},
 	}
 
