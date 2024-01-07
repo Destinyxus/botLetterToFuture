@@ -33,11 +33,11 @@ func (s *Storage) InsertLetter(letter, email string, date time.Time) error {
 
 func (s *Storage) GetLetter(date time.Time) ([]bot_commander.Letter, error) {
 	query := `
-	SELECT * 
-	FROM letters 
-	WHERE date = $1 
-		AND isActual is true`
-
+				SELECT * 
+				FROM letters 
+				WHERE date = $1 
+				AND isActual is true
+				`
 
 	var letter []bot_commander.Letter
 
@@ -45,13 +45,17 @@ func (s *Storage) GetLetter(date time.Time) ([]bot_commander.Letter, error) {
 		return nil, err
 	}
 
+	return letter, nil
+}
+
+func (s *Storage) DeprecateLetter(date time.Time) error {
 	setToFalse := `UPDATE letters SET isActual = false WHERE date = $1`
 
 	if _, err := s.conn.Exec(setToFalse, date); err != nil {
-		return nil, err
+		return err
 	}
 
-	return letter, nil
+	return nil
 }
 
 func (s *Storage) GetActualDates() (map[time.Time]struct{}, error) {

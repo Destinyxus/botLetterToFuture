@@ -31,6 +31,7 @@ type Repository interface {
 	InsertLetter(letter, email string, date time.Time) error
 	GetLetter(date time.Time) ([]Letter, error)
 	GetActualDates() (map[time.Time]struct{}, error)
+	DeprecateLetter(date time.Time) error
 }
 
 type Letter struct {
@@ -213,16 +214,22 @@ func (b *BotCommander) CheckForActualDate() error {
 	if _, actual := b.DateIndex[currentDate]; actual {
 		letters, err := b.Repo.GetLetter(currentDate)
 		if err != nil {
-			return err
+			return fmt.Errorf("getting the letter with date: %w", err)
 		}
 
 		for _, letter := range letters {
 			if err = b.EmailSender.SendEmail(letter.Email, letter.Letter); err != nil {
-				return err
+				return fmt.Errorf("sending the letters to emails: %w", err)
 			}
 		}
 
+		b.logger.Infof("successful sending letters to emails: %d", len(letters))
+
 		delete(b.DateIndex, currentDate)
+
+		if err = b.Repo.DeprecateLetter(currentDate); err != nil {
+			return fmt.Errorf("deprecating not actual letters with date: %w", err)
+		}
 	}
 
 	return nil
@@ -231,10 +238,12 @@ func (b *BotCommander) CheckForActualDate() error {
 func (b *BotCommander) DatesDump() error {
 	dates, err := b.Repo.GetActualDates()
 	if err != nil {
-		return err
+		return fmt.Errorf("getting actual dates dump: %w", err)
 	}
 
 	b.DateIndex = dates
+
+	b.logger.Infof("successfully dumped date indexes: %d", len(b.DateIndex))
 
 	return nil
 }
