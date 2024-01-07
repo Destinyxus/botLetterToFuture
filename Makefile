@@ -1,4 +1,4 @@
-.PHONY:
+.PHONY: 
 include .env
 
 build:
@@ -6,4 +6,9 @@ build:
 
 run: build
 	./telegramBot
+
+mock:
+	mockgen -source=internal/bot_commander/bot-commander.go \
+		-destination=internal/bot_commander/mocks/mocks.go 
+
 

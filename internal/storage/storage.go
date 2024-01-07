@@ -1,9 +1,10 @@
 package storage
 
 import (
+	"time"
+
 	"github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/jmoiron/sqlx"
-	"time"
 )
 
 type Storage struct {
@@ -32,9 +33,11 @@ func (s *Storage) InsertLetter(letter, email string, date time.Time) error {
 
 func (s *Storage) GetLetter(date time.Time) ([]bot_commander.Letter, error) {
 	query := `
-			SELECT * FROM letters WHERE date = $1 and isActual is true
+	SELECT * 
+	FROM letters 
+	WHERE date = $1 
+		AND isActual is true`
 
-`
 
 	var letter []bot_commander.Letter
 
