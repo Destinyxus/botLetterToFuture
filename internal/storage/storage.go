@@ -38,6 +38,7 @@ func (s *Storage) GetLetter(date time.Time) ([]bot_commander.Letter, error) {
 	WHERE date = $1 
 		AND isActual is true`
 
+
 	var letter []bot_commander.Letter
 
 	if err := s.conn.Select(&letter, query, date); err != nil {
