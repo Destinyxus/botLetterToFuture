@@ -76,7 +76,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /home/botLetterToFuture
+            cd /home/envs
 
             echo "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}" > .env
             echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
@@ -93,6 +93,27 @@ jobs:
             echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
             
             docker pull destinyxus/futureletterbot:latest
-            docker compose up -d
+            
+            docker stop telegram-bot
+
+            # Remove old container
+            docker rm telegram-bot
+            
+            docker run -d --name telegram-bot \
+            --network botlettertofuture_mynet \
+            -p 8080:8080 \
+            -e TELEGRAM_TOKEN=${TELEGRAM_TOKEN} \
+            -e DB_HOST=${DB_HOST} \
+            -e DB_PORT=${DB_PORT} \
+            -e DB_USER=${DB_USER} \
+            -e DB_PASSWORD=${DB_PASSWORD} \
+            -e DB_NAME=${DB_NAME} \
+            -e EMAIL_TOKEN=${EMAIL_TOKEN} \
+            -e CLIENT_EMAIL=${CLIENT_EMAIL} \
+            -e HOST_EMAIL=${HOST_EMAIL} \
+            -e SMTP=${SMTP} \
+            --restart always \
+            destinyxus/futureletterbot:latest
+            
             
             docker image prune -af
