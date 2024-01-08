@@ -92,11 +92,7 @@ jobs:
                     export POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}
                     
                     docker pull destinyxus/futureletterbot:latest
-                    
-#                    docker stop telegram-bot
-                    
-#                    docker rm telegram-bot
-                    
+            
                     docker run -d --name telegram-bot \
                     --network botlettertofuture_mynet \
                     -p 8080:8080 \
@@ -112,6 +108,6 @@ jobs:
                     -e SMTP=${SMTP} \
                     --restart always \
                     destinyxus/futureletterbot:latest
-                    
-                    
+
+
 #                    docker image prune -af
