@@ -18,7 +18,7 @@ func WithLogger() Option {
 		)
 		l.SetLevel(logrus.InfoLevel)
 
-		bot.logger = l
+		bot.Logger = l
 
 		return nil
 	}

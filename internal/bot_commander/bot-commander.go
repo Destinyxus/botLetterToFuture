@@ -17,7 +17,7 @@ type BotCommander struct {
 	EmailSender EmailSender
 	Repo        Repository
 	userState   mapwmutex.MapWmutex[int64, bool]
-	logger      *logrus.Logger
+	Logger      *logrus.Logger
 	tg          *tgbotapi.BotAPI
 	DateIndex   map[time.Time]struct{}
 	cfg         config.Config
@@ -107,7 +107,7 @@ func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				update.Message.MessageID,
 				update.Message.Text); err != nil {
 
-				b.logger.Debug("error while handling command")
+				b.Logger.Debug("error while handling command")
 			}
 
 			continue
@@ -126,14 +126,14 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		msg.ReplyMarkup = numericKeyboard
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending keyboard message: %v", err)
+			b.Logger.Debugf("sending keyboard message: %v", err)
 		}
 	case "/open":
 		b.userState.Store(userId, false)
 		msg.ReplyMarkup = numericKeyboard
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending keyboard message: %v", err)
+			b.Logger.Debugf("sending keyboard message: %v", err)
 		}
 	case "/about me":
 		b.userState.Store(userId, false)
@@ -141,7 +141,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		msg.Text = b.cfg.Responses.AboutDescription
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending about me info: %v", err)
+			b.Logger.Debugf("sending about me info: %v", err)
 		}
 	case "send the Letter":
 		b.userState.Store(userId, true)
@@ -149,7 +149,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		msg.Text = b.cfg.Responses.SendLetter
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending the offer to send message: %v", err)
+			b.Logger.Debugf("sending the offer to send message: %v", err)
 		}
 	case "/stop":
 		b.userState.Store(userId, false)
@@ -157,7 +157,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 		msg.Text = b.cfg.Responses.StopCommand
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending the stop info: %v", err)
+			b.Logger.Debugf("sending the stop info: %v", err)
 		}
 	default:
 		b.processMessage(userId, chatId, messageID, message, msg)
@@ -181,24 +181,24 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 			msg.Text = b.cfg.Responses.Result
 
 			if _, err = b.tg.Send(msg); err != nil {
-				b.logger.Debugf("sending the success message: %v", err)
+				b.Logger.Debugf("sending the success message: %v", err)
 			}
 
 			if _, err = b.tg.Send(tgbotapi.NewDeleteMessage(chatId, messageID)); err != nil {
-				b.logger.Debugf("deleting user's message: %v", err)
+				b.Logger.Debugf("deleting user's message: %v", err)
 			}
 		} else if errors.Is(err, ErrNotValidEmailOrDate) {
 			msg.Text = b.cfg.Errors.InvalidFormatMessage
 
 			if _, err = b.tg.Send(msg); err != nil {
-				b.logger.Debugf("sending the invalid message: %v", err)
+				b.Logger.Debugf("sending the invalid message: %v", err)
 			}
 		}
 	} else {
 		msg.Text = b.cfg.Errors.NotValidCommand
 
 		if _, err := b.tg.Send(msg); err != nil {
-			b.logger.Debugf("sending the not valid command message: %v", err)
+			b.Logger.Debugf("sending the not valid command message: %v", err)
 		}
 	}
 }
@@ -223,7 +223,7 @@ func (b *BotCommander) CheckForActualDate() error {
 			}
 		}
 
-		b.logger.Infof("successful sending letters to emails: %d", len(letters))
+		b.Logger.Infof("successful sending letters to emails: %d", len(letters))
 
 		delete(b.DateIndex, currentDate)
 
@@ -243,7 +243,7 @@ func (b *BotCommander) DatesDump() error {
 
 	b.DateIndex = dates
 
-	b.logger.Infof("successfully dumped date indexes: %d", len(b.DateIndex))
+	b.Logger.Infof("successfully dumped date indexes: %d", len(b.DateIndex))
 
 	return nil
 }

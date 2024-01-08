@@ -2,12 +2,14 @@ package bot_commander_test
 
 import (
 	"errors"
+	"fmt"
+	"github.com/sirupsen/logrus"
+	"go.uber.org/mock/gomock"
 	"testing"
 	"time"
 
 	"github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
-	"github.com/Destinyxus/botLetterToFuture/internal/bot_commander/mocks"
-	"github.com/golang/mock/gomock"
+	mocks "github.com/Destinyxus/botLetterToFuture/internal/bot_commander/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,6 +55,8 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 
 				sndr.EXPECT().SendEmail("foo@gmail.com", "hii").Return(nil).Times(1)
 				sndr.EXPECT().SendEmail("hey@gmail.com", "lol").Return(nil).Times(1)
+
+				repo.EXPECT().DeprecateLetter(currentDateFormatted).Return(nil).Times(1)
 			},
 			expectedError: nil,
 		},
@@ -89,7 +93,7 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 
 				sndr.EXPECT().SendEmail("foo", "foo").Times(0)
 			},
-			expectedError: errors.New("db err"),
+			expectedError: fmt.Errorf("getting the letter with date: %w", errors.New("db err")),
 		},
 		{
 			name: "send email error",
@@ -118,7 +122,7 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 					Return(errors.New("email sender error")).
 					Times(1)
 			},
-			expectedError: errors.New("email sender error"),
+			expectedError: fmt.Errorf("sending the letters to emails: %w", errors.New("email sender error")),
 		},
 	}
 
@@ -138,6 +142,7 @@ func TestBotCommander_CheckForActualDate(t *testing.T) {
 				Repo:        repo,
 				EmailSender: sndr,
 				DateIndex:   test.configureDateIndex(),
+				Logger:      logrus.New(),
 			}
 
 			a.Equal(b.CheckForActualDate(), test.expectedError)

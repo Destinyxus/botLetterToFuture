@@ -4,41 +4,41 @@ on:
   workflow_dispatch:
 
 jobs:
-#  test:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout main
-#        uses: actions/checkout@v4
-#
-#      - name: Set up Go
-#        uses: actions/setup-go@v4
-#        with:
-#          go-version: '1.x'
-#
-#      - name: Download dependencies
-#        run: go mod download
-#
-#      - name: Test
-#        run: go test ./...
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
 
-#  golangci:
-#    name: lint
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: actions/setup-go@v4
-#        with:
-#          go-version: '1.21'
-#          cache: false
-#      - name: golangci-lint
-#        uses: golangci/golangci-lint-action@v3
-#        with:
-#          version: latest
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.x'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Test
+        run: go test ./...
+
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
 
   push_to_registry:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
-#    needs: golangci
+    needs: golangci
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
