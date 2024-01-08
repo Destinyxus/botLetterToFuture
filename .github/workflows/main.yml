@@ -83,7 +83,7 @@ jobs:
                     export DB_NAME=${{ secrets.DB_NAME }}
                     export TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
                     export DB_HOST=${{ secrets.DB_HOST }}
-                    export EMAIL_TOKEN=${{ secrets.EMAIL_TOKEN }}
+                    export EMAIL_TOKEN="${{ secrets.EMAIL_TOKEN }}"
                     export CLIENT_EMAIL=${{ secrets.CLIENT_EMAIL }}
                     export HOST_EMAIL=${{ secrets.HOST_EMAIL }}
                     export SMTP=${{ secrets.SMTP }}
@@ -93,6 +93,10 @@ jobs:
                     
                     docker pull destinyxus/futureletterbot:latest
             
+                    docker stop telegram-bot
+            
+                    docker rm telegram-bot
+                    
                     docker run -d --name telegram-bot \
                     --network botlettertofuture_mynet \
                     -p 8080:8080 \
@@ -110,4 +114,4 @@ jobs:
                     destinyxus/futureletterbot:latest
 
 
-#                    docker image prune -af
+                    docker image prune -af
