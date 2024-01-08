@@ -96,7 +96,7 @@ jobs:
                     docker stop telegram-bot
                     
                     # Remove old container
-            #            docker rm telegram-bot
+                    docker rm telegram-bot
                     
                     docker run -d --name telegram-bot \
                     --network botlettertofuture_mynet \
