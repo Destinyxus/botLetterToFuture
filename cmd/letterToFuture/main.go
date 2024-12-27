@@ -5,8 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/Destinyxus/botLetterToFuture/internal/storage"
-	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
 	"log"
 	"os/signal"
 	"sync"
@@ -15,22 +13,29 @@ import (
 
 	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/Destinyxus/botLetterToFuture/internal/config"
+	"github.com/Destinyxus/botLetterToFuture/internal/storage"
+	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
+	"github.com/joho/godotenv"
 )
 
-func main() {
-	var path = flag.String("cfg-path", "internal/config/config.toml", "config path")
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file")
+	}
+}
 
+func main() {
+	path := *flag.String("cfg-path", "internal/config/config.toml", "config path")
 	flag.Parse()
 
-	cfg, err := config.New(*path)
+	cfg, err := config.New(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
-	defer cancel()
-
-	conn, err := postgresconn.New(*cfg)
+	ctx := context.Background()
+	_, err = postgresconn.New(ctx, cfg.Postgres)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,7 +46,7 @@ func main() {
 	}
 
 	botCommander, err := commander.New(
-		st,
+		nil,
 		*cfg,
 		commander.WithLogger(),
 		commander.WithTgAPI(cfg.TelegramToken),
@@ -52,6 +57,9 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	defer cancel()
 
 	if err = botCommander.Start(ctx, &wg); err != nil {
 		log.Fatal(err)

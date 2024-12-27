@@ -7,4 +7,4 @@ SendLetter = "Okay, now please send me your letter with email and date you want 
 [Errors]
 SizeLetter = "Sorry, I can't save such a long letter. Cut it short and try again!"
 InvalidFormatMessage = "invalid Email or Date format, it should be like letter;example@gmail.com;2024-11-11 (year-month-day)!"
-NotValidCommand = "Sorry, i dont understand you;( Everything i can do you can find in menu - /open it"
+NotValidCommand = "Sorry, i dont understand you; (Everything I can do you can find in menu - /open it)"
