@@ -8,18 +8,18 @@ import (
 )
 
 const (
-	DateFormat     = "2006-01-02"
-	FromConstraint = "2024-01-01"
-	ToConstraint   = "2025-03-28"
+	dateFormat     = "2006-01-02"
+	fromConstraint = "2024-01-01"
+	toConstraint   = "2025-03-28"
 )
 
-var ErrNotValidEmailOrDate = errors.New("not valid Email or Date")
+var errInvalidEmailOrDate = errors.New("error invalid email or date")
 
 func ValidateMessage(message string) (Letter, error) {
 	s := strings.Split(message, ";")
 
 	if len(s) != 3 {
-		return Letter{}, ErrNotValidEmailOrDate
+		return Letter{}, errInvalidEmailOrDate
 	}
 
 	letter := s[0]
@@ -27,10 +27,10 @@ func ValidateMessage(message string) (Letter, error) {
 	date := s[2]
 
 	if !ValidateEmail(email) || !DateValidation(date) {
-		return Letter{}, ErrNotValidEmailOrDate
+		return Letter{}, errInvalidEmailOrDate
 	}
 
-	datee, err := time.Parse(DateFormat, date)
+	datee, err := time.Parse(dateFormat, date)
 	if err != nil {
 		return Letter{}, err
 	}
@@ -45,24 +45,24 @@ func ValidateEmail(email string) bool {
 }
 
 func DateValidation(datee string) bool {
-	date, err := time.Parse(DateFormat, datee)
+	date, err := time.Parse(dateFormat, datee)
 	if err != nil {
 		return false
 	}
 
-	from, err := time.Parse(DateFormat, FromConstraint)
+	from, err := time.Parse(dateFormat, fromConstraint)
 	if err != nil {
 		return false
 	}
 
-	to, err := time.Parse(DateFormat, ToConstraint)
+	to, err := time.Parse(dateFormat, toConstraint)
 	if err != nil {
 		return false
 	}
 
-	now := time.Now().Format(DateFormat)
+	now := time.Now().Format(dateFormat)
 
-	currentDate, err := time.Parse(DateFormat, now)
+	currentDate, err := time.Parse(dateFormat, now)
 	if err != nil {
 		return false
 	}

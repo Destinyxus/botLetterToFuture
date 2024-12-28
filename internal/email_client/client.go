@@ -1,25 +1,27 @@
-package emailSender
+package emailclient
 
 import (
 	"net/smtp"
 	"strings"
+
+	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 )
 
-type EmailClient struct {
+type emailClient struct {
 	auth        smtp.Auth
 	clientEmail string
 	smtpAddr    string
 }
 
-func New(token, clientEmail, host, smtpAddr string) *EmailClient {
-	return &EmailClient{
+func New(token, clientEmail, host, smtpAddr string) commander.EmailClient {
+	return &emailClient{
 		auth:        smtp.PlainAuth("", clientEmail, strings.Join(splitIntoChunks(token, 4), " "), host),
 		clientEmail: clientEmail,
 		smtpAddr:    smtpAddr,
 	}
 }
 
-func (s *EmailClient) SendEmail(email, letter string) error {
+func (s *emailClient) SendEmail(email, letter string) error {
 	if err := smtp.SendMail(s.smtpAddr,
 		s.auth,
 		s.clientEmail,
