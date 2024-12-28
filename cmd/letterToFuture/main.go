@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -13,8 +12,11 @@ import (
 
 	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/Destinyxus/botLetterToFuture/internal/config"
+	"github.com/Destinyxus/botLetterToFuture/internal/emailSender"
+	"github.com/Destinyxus/botLetterToFuture/internal/logger"
 	"github.com/Destinyxus/botLetterToFuture/internal/storage"
 	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 )
 
@@ -31,38 +33,52 @@ func main() {
 
 	cfg, err := config.New(path)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("error initializing config: %w", err))
+	}
+
+	l, err := logger.New(cfg.Logger.LogLevel)
+	if err != nil {
+		log.Fatal(fmt.Errorf("error initializing logger: %w", err))
 	}
 
 	ctx := context.Background()
-	_, err = postgresconn.New(ctx, cfg.Postgres)
+
+	conn, err := postgresconn.New(ctx, cfg.Postgres)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("error initializing postgres connection: %w", err))
 	}
 
-	st, err := storage.New(conn)
+	api, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(fmt.Errorf("error initializing botapi instance: %w", err))
 	}
+
+	es := emailSender.New(
+		cfg.EmailSender.EmailToken,
+		cfg.EmailSender.ClientEmail,
+		cfg.EmailSender.HostEmail,
+		cfg.EmailSender.SMTPAddress,
+	)
 
 	botCommander, err := commander.New(
-		nil,
-		*cfg,
-		commander.WithLogger(),
-		commander.WithTgAPI(cfg.TelegramToken),
-		commander.WithEmailSender(cfg.EmailSender.EmailToken, cfg.EmailSender.ClientEmail, cfg.EmailSender.HostEmail, cfg.EmailSender.SMTPAddress),
+		ctx,
+		storage.New(conn),
+		cfg.BotResponses,
+		commander.WithLogger(l),
+		commander.WithTgAPI(api),
+		commander.WithEmailSender(es),
 	)
-	if errors.Is(err, commander.DateIndexesError) {
-		log.Fatal(err)
+	if err != nil {
+		log.Fatal(fmt.Errorf("error initializing botcommander: %w", err))
 	}
 
-	var wg sync.WaitGroup
+	var wg *sync.WaitGroup
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+	nctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	defer cancel()
 
-	if err = botCommander.Start(ctx, &wg); err != nil {
-		log.Fatal(err)
+	if err = botCommander.Start(ctx, wg); err != nil {
+		log.Fatal(fmt.Errorf("error starting botcommander: %w", err))
 	}
 
 	ticker := time.NewTicker(time.Minute)
@@ -71,14 +87,14 @@ loop:
 	for {
 		select {
 		case <-ticker.C:
-			if err = botCommander.CheckForActualDate(); err != nil {
+			if err = botCommander.CheckForActualDate(ctx); err != nil {
 				log.Fatal(err)
 			}
 
 			ticker.Reset(time.Minute)
 
-		case <-ctx.Done():
-			fmt.Println("graceful shutdown")
+		case <-nctx.Done():
+			log.Println("graceful shutdown")
 
 			break loop
 		}

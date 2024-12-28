@@ -4,34 +4,34 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Destinyxus/botLetterToFuture/internal/config"
-	"github.com/Destinyxus/botLetterToFuture/internal/mapwmutex"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/sirupsen/logrus"
 	"log"
 	"sync"
 	"time"
-)
 
-type BotCommander struct {
-	EmailSender EmailSender
-	Repo        Repository
-	userState   mapwmutex.MapWmutex[int64, bool]
-	Logger      *logrus.Logger
-	tg          *tgbotapi.BotAPI
-	DateIndex   map[time.Time]struct{}
-	cfg         config.Config
-}
+	"github.com/Destinyxus/botLetterToFuture/internal/config"
+	"github.com/Destinyxus/botLetterToFuture/internal/logger"
+	"github.com/Destinyxus/botLetterToFuture/internal/mapwmutex"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
 
 type EmailSender interface {
 	SendEmail(email, letter string) error
 }
 
 type Repository interface {
-	InsertLetter(letter, email string, date time.Time) error
-	GetLetter(date time.Time) ([]Letter, error)
-	GetActualDates() (map[time.Time]struct{}, error)
-	DeprecateLetter(date time.Time) error
+	InsertLetter(ctx context.Context, letter, email string, date time.Time) error
+	GetLetter(ctx context.Context, date time.Time) ([]Letter, error)
+	GetActualDates(ctx context.Context) (map[time.Time]struct{}, error)
+	DeprecateLetter(ctx context.Context, date time.Time) error
+}
+
+type BotCommander struct {
+	EmailSender EmailSender
+	Repo        Repository
+	userState   mapwmutex.MapWmutex[int64, bool]
+	Logger      logger.Logger
+	tg          *tgbotapi.BotAPI
+	DateIndex   map[time.Time]struct{}
 }
 
 type Letter struct {
@@ -42,36 +42,49 @@ type Letter struct {
 	IsActual bool      `db:"isactual"`
 }
 
-var numericKeyboard = tgbotapi.NewReplyKeyboard(
-	tgbotapi.NewKeyboardButtonRow(
-		tgbotapi.NewKeyboardButton("send the Letter"),
-		tgbotapi.NewKeyboardButton("/about me"),
-	),
+var (
+	ErrDumpingDatesIndexes = errors.New("error dumping dates indexes")
+
+	infoAboutDescription string
+	infoResult           string
+	infoStopCommand      string
+	infoSendLetter       string
+
+	errSizeLetter           error //unused?
+	errInvalidFormatMessage error
+	errNotValidCommand      error
+
+	numericKeyboard = tgbotapi.NewReplyKeyboard(
+		tgbotapi.NewKeyboardButtonRow(
+			tgbotapi.NewKeyboardButton("send the Letter"),
+			tgbotapi.NewKeyboardButton("/about me"),
+		),
+	)
 )
 
-var DateIndexesError = errors.New("date indexes err")
-
-func New(
-	repo Repository,
-	cfg config.Config,
-	options ...Option,
-) (*BotCommander, error) {
+func New(ctx context.Context, repo Repository, cfg config.BotResponses, options ...Option) (*BotCommander, error) {
 	b := &BotCommander{
 		userState: *mapwmutex.NewMapWmutex[int64, bool](0),
 		DateIndex: make(map[time.Time]struct{}),
 		Repo:      repo,
-		cfg:       cfg,
 	}
 
-	for _, o := range options {
-		if err := o(b); err != nil {
-			fmt.Println("")
-		}
+	for _, opt := range options {
+		opt(b)
 	}
 
-	if err := b.DatesDump(); err != nil {
-		return &BotCommander{}, DateIndexesError
+	if err := b.DatesDump(ctx); err != nil {
+		return &BotCommander{}, fmt.Errorf("init botcommander error: %w", ErrDumpingDatesIndexes)
 	}
+
+	infoAboutDescription = cfg.AboutDescription
+	infoResult = cfg.Result
+	infoStopCommand = cfg.StopCommand
+	infoSendLetter = cfg.SendLetter
+
+	errSizeLetter = errors.New(cfg.SizeLetter)
+	errInvalidFormatMessage = errors.New(cfg.InvalidFormatMessage)
+	errNotValidCommand = errors.New(cfg.NotValidCommand)
 
 	return b, nil
 }
@@ -101,7 +114,10 @@ func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
 				continue
 			}
 
+			ctx := context.Background()
+
 			if err := b.handleCommand(
+				ctx,
 				update.Message.From.ID,
 				update.Message.Chat.ID,
 				update.Message.MessageID,
@@ -117,7 +133,7 @@ func (b *BotCommander) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	return nil
 }
 
-func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, message string) error {
+func (b *BotCommander) handleCommand(ctx context.Context, userId, chatId int64, messageID int, message string) error {
 	msg := tgbotapi.NewMessage(chatId, message)
 
 	switch message {
@@ -138,7 +154,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 	case "/about me":
 		b.userState.Store(userId, false)
 
-		msg.Text = b.cfg.Responses.AboutDescription
+		msg.Text = infoAboutDescription
 
 		if _, err := b.tg.Send(msg); err != nil {
 			b.Logger.Debugf("sending about me info: %v", err)
@@ -146,7 +162,7 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 	case "send the Letter":
 		b.userState.Store(userId, true)
 
-		msg.Text = b.cfg.Responses.SendLetter
+		msg.Text = infoSendLetter
 
 		if _, err := b.tg.Send(msg); err != nil {
 			b.Logger.Debugf("sending the offer to send message: %v", err)
@@ -154,23 +170,23 @@ func (b *BotCommander) handleCommand(userId, chatId int64, messageID int, messag
 	case "/stop":
 		b.userState.Store(userId, false)
 
-		msg.Text = b.cfg.Responses.StopCommand
+		msg.Text = infoStopCommand
 
 		if _, err := b.tg.Send(msg); err != nil {
 			b.Logger.Debugf("sending the stop info: %v", err)
 		}
 	default:
-		b.processMessage(userId, chatId, messageID, message, msg)
+		b.processMessage(ctx, userId, chatId, messageID, message, msg)
 	}
 
 	return nil
 }
 
-func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int, message string, msg tgbotapi.MessageConfig) {
+func (b *BotCommander) processMessage(ctx context.Context, userId int64, chatId int64, messageID int, message string, msg tgbotapi.MessageConfig) {
 	if state := b.userState.Load(userId); state {
 		letter, err := ValidateMessage(message)
 		if err == nil {
-			if err = b.Repo.InsertLetter(letter.Letter, letter.Email, letter.Date); err != nil {
+			if err = b.Repo.InsertLetter(ctx, letter.Letter, letter.Email, letter.Date); err != nil {
 				log.Fatal(err)
 			}
 
@@ -178,7 +194,7 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 
 			b.userState.Store(userId, false)
 
-			msg.Text = b.cfg.Responses.Result
+			msg.Text = infoResult
 
 			if _, err = b.tg.Send(msg); err != nil {
 				b.Logger.Debugf("sending the success message: %v", err)
@@ -188,14 +204,14 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 				b.Logger.Debugf("deleting user's message: %v", err)
 			}
 		} else if errors.Is(err, ErrNotValidEmailOrDate) {
-			msg.Text = b.cfg.Errors.InvalidFormatMessage
+			msg.Text = errInvalidFormatMessage.Error()
 
 			if _, err = b.tg.Send(msg); err != nil {
 				b.Logger.Debugf("sending the invalid message: %v", err)
 			}
 		}
 	} else {
-		msg.Text = b.cfg.Errors.NotValidCommand
+		msg.Text = errNotValidCommand.Error()
 
 		if _, err := b.tg.Send(msg); err != nil {
 			b.Logger.Debugf("sending the not valid command message: %v", err)
@@ -203,7 +219,7 @@ func (b *BotCommander) processMessage(userId int64, chatId int64, messageID int,
 	}
 }
 
-func (b *BotCommander) CheckForActualDate() error {
+func (b *BotCommander) CheckForActualDate(ctx context.Context) error {
 	now := time.Now().Format(DateFormat)
 
 	currentDate, err := time.Parse(DateFormat, now)
@@ -212,7 +228,7 @@ func (b *BotCommander) CheckForActualDate() error {
 	}
 
 	if _, actual := b.DateIndex[currentDate]; actual {
-		letters, err := b.Repo.GetLetter(currentDate)
+		letters, err := b.Repo.GetLetter(ctx, currentDate)
 		if err != nil {
 			return fmt.Errorf("getting the letter with date: %w", err)
 		}
@@ -227,7 +243,7 @@ func (b *BotCommander) CheckForActualDate() error {
 
 		delete(b.DateIndex, currentDate)
 
-		if err = b.Repo.DeprecateLetter(currentDate); err != nil {
+		if err = b.Repo.DeprecateLetter(ctx, currentDate); err != nil {
 			return fmt.Errorf("deprecating not actual letters with date: %w", err)
 		}
 	}
@@ -235,8 +251,8 @@ func (b *BotCommander) CheckForActualDate() error {
 	return nil
 }
 
-func (b *BotCommander) DatesDump() error {
-	dates, err := b.Repo.GetActualDates()
+func (b *BotCommander) DatesDump(ctx context.Context) error {
+	dates, err := b.Repo.GetActualDates(ctx)
 	if err != nil {
 		return fmt.Errorf("getting actual dates dump: %w", err)
 	}

@@ -8,10 +8,14 @@ import (
 
 type Config struct {
 	TelegramToken string `env:"TELEGRAM_TOKEN" env-required:"TELEGRAM_TOKEN"`
+	Logger        Logger
 	Postgres      Postgres
 	EmailSender   EmailSender
-	Errors        Errors
-	Responses     Responses
+	BotResponses
+}
+
+type Logger struct {
+	LogLevel string `env:"LOG_LEVEL" env-required:"LOG_LEVEL"`
 }
 
 type Postgres struct {
@@ -29,6 +33,17 @@ type EmailSender struct {
 	HostEmail   string `env:"HOST_EMAIL" env-required:"HOST_EMAIL"`
 	SMTPAddress string `env:"SMTP" env-required:"SMTP"`
 }
+type BotResponses struct {
+	Info
+	Errors
+}
+
+type Info struct {
+	AboutDescription string `toml:"AboutDescription"`
+	Result           string `toml:"Result"`
+	StopCommand      string `toml:"StopCommand"`
+	SendLetter       string `toml:"SendLetter"`
+}
 
 type Errors struct {
 	SizeLetter           string `toml:"SizeLetter"`
@@ -36,18 +51,11 @@ type Errors struct {
 	NotValidCommand      string `toml:"NotValidCommand"`
 }
 
-type Responses struct {
-	AboutDescription string `toml:"AboutDescription"`
-	Result           string `toml:"Result"`
-	StopCommand      string `toml:"StopCommand"`
-	SendLetter       string `toml:"SendLetter"`
-}
-
 func New(path string) (*Config, error) {
 	cfg := new(Config)
 
 	if err := cleanenv.ReadConfig(path, cfg); err != nil {
-		return nil, fmt.Errorf("readconfig error: %w", err)
+		return nil, fmt.Errorf("error reading config: %w", err)
 	}
 
 	return cfg, nil
