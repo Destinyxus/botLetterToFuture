@@ -7,9 +7,9 @@ import (
 )
 
 func FormatTime(t time.Time) time.Time {
-	now := t.Format(DateFormat)
+	now := t.Format(dateFormat)
 
-	parsed, _ := time.Parse(DateFormat, now)
+	parsed, _ := time.Parse(dateFormat, now)
 
 	return parsed
 }
@@ -24,7 +24,7 @@ func TestValidateMessage(t *testing.T) {
 		{
 			name: "all good",
 			message: "aboba. hi, my name is aboba;aboba@gmail.ru;" +
-				time.Now().Format(DateFormat),
+				time.Now().Format(dateFormat),
 			want: Letter{
 				Letter: "aboba. hi, my name is aboba",
 				Email:  "aboba@gmail.ru",
@@ -36,19 +36,19 @@ func TestValidateMessage(t *testing.T) {
 			name:      "invalid input: 2 `;` required",
 			message:   "aboba. hi, my name is aboba;wef;reg;erg;aboba@gmail.ru;2025-01-01",
 			want:      Letter{},
-			resultErr: ErrNotValidEmailOrDate,
+			resultErr: errInvalidEmailOrDate,
 		},
 		{
 			name:      "invalid email",
 			message:   "aboba. hi, my name is aboba;abmail.ru;2025-01-01",
 			want:      Letter{},
-			resultErr: ErrNotValidEmailOrDate,
+			resultErr: errInvalidEmailOrDate,
 		},
 		{
 			name:      "invalid date",
 			message:   "aboba. hi, my name is aboba;aboba@gmail.ru;2029-01",
 			want:      Letter{},
-			resultErr: ErrNotValidEmailOrDate,
+			resultErr: errInvalidEmailOrDate,
 		},
 	}
 	for _, tt := range tests {

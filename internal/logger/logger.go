@@ -1,28 +1,26 @@
 package logger
 
 import (
-	"fmt"
-
+	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/sirupsen/logrus"
 )
 
-type Logger interface {
-}
-
 type logger struct {
-	*logrus.Logger
+	logrus *logrus.Logger
 }
 
-func New(logLevel string) (Logger, error) {
-	lvl, err := logrus.ParseLevel(logLevel)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing log level: %w", err)
-	}
+func New(l *logrus.Logger) commander.Logger {
+	return logger{logrus: l}
+}
 
-	l := logrus.New()
+func (l logger) Debug(args ...interface{}) {
+	l.logrus.Debug(args...)
+}
 
-	l.SetFormatter(&logrus.TextFormatter{DisableColors: false})
-	l.SetLevel(lvl)
+func (l logger) Debugf(format string, args ...interface{}) {
+	l.logrus.Debugf(format, args...)
+}
 
-	return logger{l}, nil
+func (l logger) Infof(format string, args ...interface{}) {
+	l.logrus.Infof(format, args...)
 }

@@ -14,7 +14,7 @@ type storage struct {
 	conn *pgx.Conn
 }
 
-func New(conn *pgx.Conn) commander.Repository {
+func New(conn *pgx.Conn) commander.Storage {
 	return &storage{
 		conn: conn,
 	}

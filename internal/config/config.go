@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -12,6 +13,7 @@ type Config struct {
 	Postgres      Postgres
 	EmailSender   EmailSender
 	BotResponses
+	DateCheckInterval time.Duration `env:"DATE_CHECK_INTERVAL" env-required:"DATE_CHECK_INTERVAL"`
 }
 
 type Logger struct {
@@ -46,7 +48,6 @@ type Info struct {
 }
 
 type Errors struct {
-	SizeLetter           string `toml:"SizeLetter"`
 	InvalidFormatMessage string `toml:"InvalidFormatMessage"`
 	NotValidCommand      string `toml:"NotValidCommand"`
 }

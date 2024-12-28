@@ -10,11 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	botclient "github.com/Destinyxus/botLetterToFuture/internal/bot_client"
 	commander "github.com/Destinyxus/botLetterToFuture/internal/bot_commander"
 	"github.com/Destinyxus/botLetterToFuture/internal/config"
-	"github.com/Destinyxus/botLetterToFuture/internal/emailSender"
+	emailclient "github.com/Destinyxus/botLetterToFuture/internal/email_client"
 	"github.com/Destinyxus/botLetterToFuture/internal/logger"
 	"github.com/Destinyxus/botLetterToFuture/internal/storage"
+	"github.com/Destinyxus/botLetterToFuture/pkg/logruslog"
 	"github.com/Destinyxus/botLetterToFuture/pkg/postgresconn"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -36,9 +38,9 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing config: %w", err))
 	}
 
-	l, err := logger.New(cfg.Logger.LogLevel)
+	l, err := logruslog.New(cfg.Logger.LogLevel)
 	if err != nil {
-		log.Fatal(fmt.Errorf("error initializing logger: %w", err))
+		log.Fatal(fmt.Errorf("error initializing logrus: %w", err))
 	}
 
 	ctx := context.Background()
@@ -48,25 +50,23 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing postgres connection: %w", err))
 	}
 
-	api, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
+	botAPI, err := tgbotapi.NewBotAPI(cfg.TelegramToken)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error initializing botapi instance: %w", err))
 	}
-
-	es := emailSender.New(
-		cfg.EmailSender.EmailToken,
-		cfg.EmailSender.ClientEmail,
-		cfg.EmailSender.HostEmail,
-		cfg.EmailSender.SMTPAddress,
-	)
 
 	botCommander, err := commander.New(
 		ctx,
 		storage.New(conn),
 		cfg.BotResponses,
-		commander.WithLogger(l),
-		commander.WithTgAPI(api),
-		commander.WithEmailSender(es),
+		commander.WithLogger(logger.New(l)),
+		commander.WithTgAPI(botclient.New(botAPI)),
+		commander.WithEmailClient(emailclient.New(
+			cfg.EmailSender.EmailToken,
+			cfg.EmailSender.ClientEmail,
+			cfg.EmailSender.HostEmail,
+			cfg.EmailSender.SMTPAddress,
+		)),
 	)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error initializing botcommander: %w", err))
@@ -81,18 +81,15 @@ func main() {
 		log.Fatal(fmt.Errorf("error starting botcommander: %w", err))
 	}
 
-	ticker := time.NewTicker(time.Minute)
+	dateCheckInterval := time.NewTicker(cfg.DateCheckInterval)
 
 loop:
 	for {
 		select {
-		case <-ticker.C:
+		case <-dateCheckInterval.C:
 			if err = botCommander.CheckForActualDate(ctx); err != nil {
-				log.Fatal(err)
+				log.Fatal(fmt.Errorf("error checking for actual date: %w", err))
 			}
-
-			ticker.Reset(time.Minute)
-
 		case <-nctx.Done():
 			log.Println("graceful shutdown")
 
